@@ -1,0 +1,20 @@
+[
+  {
+    "id": "lvce",
+    "name": "LVCE Editor",
+    "version": "v0.122.9",
+    "archive": "lvce-v0.122.9_arm64.deb",
+    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.122.9/lvce-v0.122.9_arm64.deb",
+    "sha256": "5d7cb83a4bd34034f20a45dcd113f3bdd283a69859d7564e16dbfc4cb7d11478",
+    "binary": "usr/lib/lvce/lvce"
+  },
+  {
+    "id": "vscode",
+    "name": "VS Code",
+    "version": "1.141.1",
+    "archive": "vscode-arm64.tar.gz",
+    "url": "https://vscode.download.prss.microsoft.com/dbazure/download/stable/7baac39ec3ca969dab74ac12c097f6a486e46593/code-stable-arm64-1791832958.tar.gz",
+    "sha256": "4d41625900780ab8b3fbe45cbae572d6ec61977ed33685b5326bf81ac12a1a40",
+    "binary": "VSCode-linux-arm64/code"
+  }
+]
