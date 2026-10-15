@@ -141,6 +141,7 @@ def trial(editor, perf):
                         time.sleep(.02)
                     time.sleep(10)
                     window_id = window['windowId']
+                    details['mainWindow'] = window_id
                     subprocess.run(['xdotool', 'windowactivate', '--sync', window_id], check=True)
                     subprocess.run(['xdotool', 'mousemove', '--window', window_id, '500', '400'], check=True)
                     subprocess.run(['xdotool', 'click', '1'], check=True)
@@ -199,15 +200,30 @@ def trial(editor, perf):
             child.wait(timeout=5)
             return result
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
-            snapshot = d / 'desktop.xwd'
-            snapshot_result = subprocess.run(['xwd', '-silent', '-screen', '-root', '-out', str(snapshot)],
-                                             capture_output=True, text=True)
-            if snapshot_result.returncode == 0 and snapshot.exists():
-                diagnostics = Path('results/diagnostics')
-                diagnostics.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(snapshot, diagnostics / f"{editor['id']}-{uuid.uuid4().hex}.xwd")
+            diagnostics = Path('results/diagnostics')
+            diagnostics.mkdir(parents=True, exist_ok=True)
+            screenshot_paths = {}
+            window_ids = {
+                key: details.get(key) for key in
+                ['mainWindow', 'openDialog', 'locationEntryFocus', 'secondReturnFocus']
+            }
+            for label, window_id in window_ids.items():
+                if not window_id or not str(window_id).isdigit():
+                    continue
+                snapshot = d / f'{label}.xwd'
+                snapshot_result = subprocess.run(
+                    ['xwd', '-silent', '-id', str(window_id), '-out', str(snapshot)],
+                    capture_output=True, text=True)
+                if snapshot_result.returncode == 0 and snapshot.exists():
+                    name = f"{editor['id']}-{label}-{uuid.uuid4().hex}.xwd"
+                    shutil.copy2(snapshot, diagnostics / name)
+                    screenshot_paths[label] = name
+            window_tree = subprocess.run(['xwininfo', '-root', '-tree'],
+                                         capture_output=True, text=True)
             return {'valid': False, 'error': str(error), 'command': command,
-                    'diagnostics': {**details, **failure_diagnostics},
+                    'diagnostics': {**details, **failure_diagnostics,
+                                    'screenshots': screenshot_paths,
+                                    'windowTree': window_tree.stdout[-12000:]},
                     **{name: (d / name).read_text(errors='replace')[-8000:]
                        for name in ['stdout', 'stderr', 'perf.log'] if (d / name).exists()}}
 
