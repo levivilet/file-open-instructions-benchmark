@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -25,6 +26,7 @@ PROTOCOL = {
     'action': 'open the prepared hello.txt fixture; VS Code uses Ctrl+O and LVCE uses File > Open File; both enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
+    'inputPacing': '10ms per path character, then 250ms for GTK location validation before submit; editor work during pacing is included',
     'accounting': 'per-CPU cgroup; includes editor descendants and all work during the open response window',
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
     'profile': 'fresh HOME and XDG directories for every trial',
@@ -36,14 +38,14 @@ PROTOCOL = {
 }
 
 
-def command_for(editor, home):
+def command_for(editor, home, debug_port):
     binary = str(ROOT / '.tmp/apps' / editor['id'] / editor['binary'])
     args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
             '--user-data-dir', str(home / 'profile'), '--disable-extensions',
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
     if editor['id'] == 'lvce':
         args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
-                '--user-data-dir=' + str(home / 'profile'), '--remote-debugging-port=0']
+                '--user-data-dir=' + str(home / 'profile'), f'--remote-debugging-port={debug_port}']
     return [binary, *args]
 
 
@@ -152,7 +154,10 @@ def trial(editor, perf):
             for path in [d, home, fixture, *home.iterdir()]:
                 os.chown(path, uid, gid)
 
-        command = command_for(editor, home)
+        with socket.socket() as port_socket:
+            port_socket.bind(('127.0.0.1', 0))
+            debug_port = port_socket.getsockname()[1]
+        command = command_for(editor, home, debug_port)
         details = {'stage': 'launch', 'command': command, 'fixture': str(fixture)}
         failure_diagnostics = {}
         try:
@@ -194,7 +199,10 @@ def trial(editor, perf):
                     details['locationEntryFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
                     details['locationEntryTitle'] = subprocess.check_output(
                         ['xdotool', 'getwindowname', details['locationEntryFocus']], text=True).strip()
-                    subprocess.run(['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', str(fixture)], check=True)
+                    subprocess.run(['xdotool', 'type', '--clearmodifiers', '--delay', '10', '--', str(fixture)], check=True)
+                    # Allow GTK's async location validation to catch up before
+                    # submitting. This fixed controller pacing is measured.
+                    time.sleep(.25)
                     # Activate the chooser's Open button. Return in GTK's
                     # location entry did not submit the selected file in CI.
                     geometry = subprocess.check_output(
@@ -226,8 +234,7 @@ def trial(editor, perf):
                     title = window_title(window_id)
                     document_path = None
                     if editor['id'] == 'lvce':
-                        port = int((home / 'profile/DevToolsActivePort').read_text().splitlines()[0])
-                        page = Page(port, timeout=5)
+                        page = Page(debug_port, timeout=5)
                         try:
                             tab_path = page.evaluate("document.querySelector('.MainTabSelected')?.getAttribute('title')")
                         finally:
