@@ -23,23 +23,27 @@ RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
     'version': 2,
     'metric': 'retired hardware instructions (user and kernel)',
-    'action': 'open the prepared hello.txt fixture; VS Code uses Ctrl+O and LVCE uses File > Open File; both enter its absolute path with Ctrl+L',
+    'action': 'open the prepared hello.txt fixture; VS Code, Geany, and Lapce use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
-    'inputPacing': '10ms per path character, then 250ms for GTK location validation before submit; editor work during pacing is included',
+    'inputPacing': '10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
     'accounting': 'per-CPU cgroup; includes editor descendants and all work during the open response window',
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
     'profile': 'fresh HOME and XDG directories for every trial',
     'cache': 'warm OS filesystem caches permitted; application profiles always fresh',
     'launcher': 'editor cgroup contains editor process tree; controller, X server and desktop stay outside',
     'cutoff': 'perf disable acknowledgement after fixed response window; control latency through acknowledgement is included',
-    'verification': 'after cutoff, VS Code window title must name hello.txt, LVCE selected tab must identify the exact fixture path, and select-all/copy must return exactly hello world',
+    'verification': 'after cutoff, VS Code, Geany, and Lapce window titles must name hello.txt, LVCE selected tab must identify the exact fixture path, and select-all/copy must return exactly hello world',
     'repeats': 3,
 }
 
 
 def command_for(editor, home, debug_port):
+    if editor['id'] == 'geany':
+        return ['geany', '--new-instance', '--no-session']
     binary = str(ROOT / '.tmp/apps' / editor['id'] / editor['binary'])
+    if editor['id'] == 'lapce':
+        return [binary, '--new']
     args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
             '--user-data-dir', str(home / 'profile'), '--disable-extensions',
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
@@ -101,6 +105,24 @@ def trigger_open(editor_id, window_id, details):
 
 def window_title(window_id):
     return subprocess.check_output(['xdotool', 'getwindowname', window_id], text=True).strip()
+
+
+def read_clipboard_contents(timeout=5):
+    deadline = time.monotonic() + timeout
+    copied = ''
+    while True:
+        try:
+            result = subprocess.run(['xclip', '-selection', 'clipboard', '-o'],
+                                    capture_output=True, text=True, timeout=.5)
+        except subprocess.TimeoutExpired:
+            result = None
+        if result is not None and result.returncode == 0:
+            copied = result.stdout
+            if copied == CONTENT:
+                return copied
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f'opened document content mismatch: expected {CONTENT!r}, got {copied!r}')
+        time.sleep(.05)
 
 
 @contextmanager
@@ -200,8 +222,8 @@ def trial(editor, perf):
                     details['locationEntryTitle'] = subprocess.check_output(
                         ['xdotool', 'getwindowname', details['locationEntryFocus']], text=True).strip()
                     subprocess.run(['xdotool', 'type', '--clearmodifiers', '--delay', '10', '--', str(fixture)], check=True)
-                    # Allow GTK's async location validation to catch up before
-                    # submitting. This fixed controller pacing is measured.
+                    # Allow asynchronous chooser path resolution to catch up
+                    # before submitting. This controller pacing is measured.
                     time.sleep(.25)
                     # Activate the chooser's Open button. Return in GTK's
                     # location entry did not submit the selected file in CI.
@@ -247,8 +269,7 @@ def trial(editor, perf):
                         raise RuntimeError(f'editor title does not identify opened fixture: {title!r}')
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+a'], check=True)
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+c'], check=True)
-                    copied = subprocess.check_output(['xclip', '-selection', 'clipboard', '-o'], text=True,
-                                                     timeout=5)
+                    copied = read_clipboard_contents()
                     details.update(windowTitle=title, copiedContent=copied)
                     if copied != CONTENT:
                         raise RuntimeError(f'opened document content mismatch: expected {CONTENT!r}, got {copied!r}')
@@ -279,6 +300,9 @@ def main():
             'paranoid': Path('/proc/sys/kernel/perf_event_paranoid').read_text().strip(),
             'editorUid': int(os.environ.get('SUDO_UID', os.getuid())),
             'runUrl': os.environ.get('BENCHMARK_RUN_URL'), 'commit': os.environ.get('BENCHMARK_COMMIT')}
+    if editor.get('package'):
+        host['packageVersion'] = subprocess.check_output(
+            ['dpkg-query', '-W', '-f=${Version}', editor['package']], text=True)
     if host['machine'] != 'aarch64':
         raise SystemExit('requires Linux ARM64')
     trials = [dict(trial(editor, args.perf), repeat=i + 1) for i in range(args.repeats)]

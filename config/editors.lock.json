@@ -16,5 +16,21 @@
     "url": "https://vscode.download.prss.microsoft.com/dbazure/download/stable/7baac39ec3ca969dab74ac12c097f6a486e46593/code-stable-arm64-1791832958.tar.gz",
     "sha256": "4d41625900780ab8b3fbe45cbae572d6ec61977ed33685b5326bf81ac12a1a40",
     "binary": "VSCode-linux-arm64/code"
+  },
+  {
+    "id": "geany",
+    "name": "Geany",
+    "version": "2.0-4ubuntu5",
+    "binary": "geany",
+    "package": "geany"
+  },
+  {
+    "id": "lapce",
+    "name": "Lapce",
+    "version": "v0.4.6",
+    "archive": "lapce-linux-arm64.tar.gz",
+    "url": "https://github.com/lapce/lapce/releases/download/v0.4.6/lapce-linux-arm64.tar.gz",
+    "sha256": "7a249eb41bc9f8ddbd94abb51ccdc1d233e33927e6eb9c63e103ea1d9c1530ec",
+    "binary": "Lapce/lapce"
   }
 ]

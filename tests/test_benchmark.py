@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'scripts'))
-from benchmark import CONTENT, PROTOCOL, RESPONSE_WINDOW_SECONDS, is_main_window
+from benchmark import CONTENT, PROTOCOL, RESPONSE_WINDOW_SECONDS, command_for, is_main_window
 from counters import parse_counter
 import report
 import benchmark
@@ -29,8 +29,14 @@ def trial(count=100):
 
 
 def result(editor, counts=(100, 300, 200)):
-    return {'editor': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
-            'trials': [dict(trial(count), repeat=index + 1) for index, count in enumerate(counts)]}
+    trials = [dict(trial(count), repeat=index + 1) for index, count in enumerate(counts)]
+    if editor['id'] in {'vscode', 'geany', 'lapce'}:
+        for item in trials:
+            item['windowTitle'] = 'hello.txt - ' + editor['name']
+    host = {'machine': 'aarch64'}
+    if editor.get('package'):
+        host['packageVersion'] = editor['version']
+    return {'editor': editor, 'protocol': PROTOCOL, 'host': host, 'trials': trials}
 
 
 class BenchmarkTest(unittest.TestCase):
@@ -38,6 +44,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(CONTENT, 'hello world')
         self.assertEqual(RESPONSE_WINDOW_SECONDS, 1.0)
         self.assertIn('Ctrl+O', PROTOCOL['action'])
+        self.assertIn('Lapce', PROTOCOL['action'])
         self.assertIn('File > Open File', PROTOCOL['action'])
         self.assertIn('clipboard', PROTOCOL['excluded'])
 
@@ -49,6 +56,20 @@ class BenchmarkTest(unittest.TestCase):
         self.assertFalse(is_main_window(missing))
         for kind in ['SPLASH', 'DIALOG', 'UTILITY', 'MENU']:
             self.assertFalse(is_main_window(mapped + f'_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_{kind}'))
+
+    def test_native_editor_commands_start_without_opening_the_fixture(self):
+        geany = next(editor for editor in report.EDITORS if editor['id'] == 'geany')
+        lapce = next(editor for editor in report.EDITORS if editor['id'] == 'lapce')
+        self.assertEqual(command_for(geany, Path('/tmp/profile'), 1234),
+                         ['geany', '--new-instance', '--no-session'])
+        self.assertEqual(command_for(lapce, Path('/tmp/profile'), 1234)[-1], '--new')
+
+    def test_clipboard_verification_waits_for_delayed_editor_copy(self):
+        results = [subprocess.CompletedProcess(['xclip'], 1, '', 'no selection'),
+                   subprocess.CompletedProcess(['xclip'], 0, CONTENT, '')]
+        with patch.object(benchmark.subprocess, 'run', side_effect=results), \
+                patch.object(benchmark.time, 'sleep'):
+            self.assertEqual(benchmark.read_clipboard_contents(timeout=1), CONTENT)
 
     def test_failure_diagnostics_run_before_editor_cleanup(self):
         events = []
@@ -82,19 +103,20 @@ class BenchmarkTest(unittest.TestCase):
                 parse_counter(f'{count};;instructions;group;100;{running};;')
 
     def test_report_rejects_missing_open_or_content_evidence(self):
-        editor = report.EDITORS[0]
-        data = result(editor)
-        report.validate_result(data, editor['id'])
-        invalid = [{'documentLoaded': False}, {'documentContent': ''},
-                   {'documentPath': '/tmp/other/hello.txt'}, {'cutoffAcknowledged': False},
-                   {'focusPid': 999}, {'instructions': 0}, {'valid': False}]
-        for changes in invalid:
-            broken = copy.deepcopy(data)
-            broken['trials'][0].update(changes)
-            with self.subTest(changes=changes), self.assertRaises(ValueError):
-                report.validate_result(broken, editor['id'])
+        for editor in report.EDITORS:
+            data = result(editor)
+            report.validate_result(data, editor['id'])
+            invalid = [{'documentLoaded': False}, {'documentContent': ''}, {'cutoffAcknowledged': False},
+                       {'focusPid': 999}, {'instructions': 0}, {'valid': False}]
+            if editor['id'] == 'lvce':
+                invalid.append({'documentPath': '/tmp/other/hello.txt'})
+            for changes in invalid:
+                broken = copy.deepcopy(data)
+                broken['trials'][0].update(changes)
+                with self.subTest(editor=editor['id'], changes=changes), self.assertRaises(ValueError):
+                    report.validate_result(broken, editor['id'])
         with self.assertRaises(ValueError):
-            report.validate_result({'editor': editor, 'trials': [trial()]}, editor['id'])
+            report.validate_result({'editor': report.EDITORS[0], 'trials': [trial()]}, report.EDITORS[0]['id'])
 
     def test_identity_verification_is_specific_to_editor(self):
         for editor in report.EDITORS:
@@ -104,7 +126,7 @@ class BenchmarkTest(unittest.TestCase):
                 report.validate_result(data, editor['id'])
                 data['trials'][0]['documentPath'] = '/tmp/wrong/hello.txt'
             else:
-                data['trials'][0]['windowTitle'] = 'Visual Studio Code'
+                data['trials'][0]['windowTitle'] = editor['name']
             with self.subTest(editor=editor['id']), self.assertRaises(ValueError):
                 report.validate_result(data, editor['id'])
 
@@ -117,9 +139,16 @@ class BenchmarkTest(unittest.TestCase):
                 path = root / ('open-' + editor['id'])
                 path.mkdir()
                 (path / 'results.json').write_text(json.dumps(result(editor)))
-            self.assertEqual(len(report.load_results(root)), 2)
+            self.assertEqual(len(report.load_results(root)), 4)
             path = root / ('open-' + report.EDITORS[0]['id']) / 'results.json'
             path.write_text(json.dumps(result(dict(report.EDITORS[0], version='wrong'))))
+            with self.assertRaises(ValueError):
+                report.load_results(root)
+            geany = next(editor for editor in report.EDITORS if editor['id'] == 'geany')
+            path = root / ('open-' + geany['id']) / 'results.json'
+            broken = result(geany)
+            broken['host']['packageVersion'] = 'wrong'
+            path.write_text(json.dumps(broken))
             with self.assertRaises(ValueError):
                 report.load_results(root)
 
@@ -134,6 +163,8 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(json.loads((root / 'raw/lvce.json').read_text()), items[0]['data'])
             page = (root / 'index.html').read_text()
             self.assertIn('hello world', page)
+            self.assertIn('Geany', page)
+            self.assertIn('Lapce', page)
             self.assertIn('Median instructions', page)
             self.assertIn('Download JSON', page)
 
