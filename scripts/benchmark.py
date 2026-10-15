@@ -4,9 +4,11 @@ import json
 import os
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import tempfile
 import time
+import uuid
 
 from counters import Capture
 
@@ -65,25 +67,30 @@ def visible_window(pids):
     return None
 
 
-def wait_for_open_dialog(main_window, timeout=10):
+def wait_for_open_dialog(main_window, details, timeout=10):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         focused = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
         if focused.lower() != main_window.lower():
+            details['openDialogTitle'] = subprocess.check_output(['xdotool', 'getwindowname', focused], text=True).strip()
             return focused
         time.sleep(.02)
+    details['focusAfterOpenCommand'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
+    details['titleAfterOpenCommand'] = window_title(main_window)
     raise RuntimeError('open-file dialog did not take focus')
 
 
-def trigger_open(editor_id, window_id):
+def trigger_open(editor_id, window_id, details):
     if editor_id == 'lvce':
         # LVCE exposes Open File in its custom File menu, without a Ctrl+O binding.
         subprocess.run(['xdotool', 'mousemove', '--window', window_id, '22', '16', 'click', '1'], check=True)
         time.sleep(.15)
+        details['lvceMenuFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
+        details['lvceTitleAfterFileClick'] = window_title(window_id)
         subprocess.run(['xdotool', 'mousemove', '--window', window_id, '80', '104', 'click', '1'], check=True)
     else:
         subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+o'], check=True)
-    return wait_for_open_dialog(window_id)
+    return wait_for_open_dialog(window_id, details)
 
 
 def window_title(window_id):
@@ -145,8 +152,13 @@ def trial(editor, perf):
                     time.sleep(.5)
                     capture.start()
                     measured_started = time.monotonic()
-                    details['openDialog'] = trigger_open(editor['id'], window_id)
+                    details['stage'] = 'open-dialog'
+                    details['openDialog'] = trigger_open(editor['id'], window_id, details)
+                    details['stage'] = 'enter-path'
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+l'], check=True)
+                    details['locationEntryFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
+                    details['locationEntryTitle'] = subprocess.check_output(
+                        ['xdotool', 'getwindowname', details['locationEntryFocus']], text=True).strip()
                     subprocess.run(['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', str(fixture)], check=True)
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
                     # GTK's location entry can accept the path and return to the
@@ -155,8 +167,11 @@ def trial(editor, perf):
                     title_deadline = time.monotonic() + .5
                     while fixture.name not in window_title(window_id) and time.monotonic() < title_deadline:
                         time.sleep(.02)
-                    if fixture.name not in window_title(window_id):
+                    details['titleAfterFirstReturn'] = window_title(window_id)
+                    if fixture.name not in details['titleAfterFirstReturn']:
+                        details['secondReturnFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
                         subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
+                    details['titleAfterOpenSubmit'] = window_title(window_id)
                     opened_at = time.monotonic()
                     remaining = opened_at + RESPONSE_WINDOW_SECONDS - time.monotonic()
                     if remaining > 0:
@@ -184,6 +199,13 @@ def trial(editor, perf):
             child.wait(timeout=5)
             return result
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            snapshot = d / 'desktop.xwd'
+            snapshot_result = subprocess.run(['xwd', '-silent', '-root', '-out', str(snapshot)],
+                                             capture_output=True, text=True)
+            if snapshot_result.returncode == 0 and snapshot.exists():
+                diagnostics = Path('results/diagnostics')
+                diagnostics.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(snapshot, diagnostics / f"{editor['id']}-{uuid.uuid4().hex}.xwd")
             return {'valid': False, 'error': str(error), 'command': command,
                     'diagnostics': {**details, **failure_diagnostics},
                     **{name: (d / name).read_text(errors='replace')[-8000:]
