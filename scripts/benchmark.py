@@ -200,7 +200,7 @@ def trial(editor, perf):
             return result
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             snapshot = d / 'desktop.xwd'
-            snapshot_result = subprocess.run(['xwd', '-silent', '-root', '-out', str(snapshot)],
+            snapshot_result = subprocess.run(['xwd', '-silent', '-screen', '-root', '-out', str(snapshot)],
                                              capture_output=True, text=True)
             if snapshot_result.returncode == 0 and snapshot.exists():
                 diagnostics = Path('results/diagnostics')
