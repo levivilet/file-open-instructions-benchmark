@@ -41,3 +41,40 @@ python3 -m unittest discover -s tests
 
 The full hardware workflow requires an ARM64 Linux host with access to retired
 instruction counters, `perf`, X11, and the listed editor dependencies.
+
+The separate **Profile LVCE open** job samples retired instructions in the same
+editor cgroup around three normal opens. Its `profile-lvce` artifact contains
+`perf.data`, native symbol/thread reports, process command lines and acknowledged
+sampling/counter boundaries. Startup is excluded; sampling encloses the counter
+window. Sampling perturbs execution, so these diagnostic results never feed the
+published report. JavaScript JIT frames may be unresolved; use the process/native
+attribution to select a focused JavaScript profile next.
+
+The diagnostic job also records a Chromium trace with V8 CPU profiles, including
+dedicated workers, in `chromium-trace.json`. This trace is collected only in the
+separate diagnostic run; the ordinary instruction comparison remains untraced.
+
+**Paired LVCE comparison** measures forty uninstrumented pairs against the frozen
+`config/lvce-baseline.json` release. Both binaries are checksum-verified and run
+on the same ARM64 host, alternating which version goes first. Each open retains
+the normal protocol, fresh profile and exact path/content checks. The separate
+`paired-lvce` artifact preserves every counter and a deterministic bootstrap
+interval for mean paired savings. Inspect raw results before claiming a gain;
+an interval spanning zero is inconclusive.
+
+The initial ASCII grapheme comparison used v0.123.9/v0.123.10, whose source
+difference was only text-measurement-worker 1.25.1 → 1.25.2. Ten pairs were
+inconclusive (mean savings −6.65M instructions, bootstrap 95% interval −29.45M to
++6.95M); a fixed forty-pair follow-up was also inconclusive (−2.76M, interval
+−10.93M to +2.49M). Every trial was retained, including the initial low baseline.
+
+Profiles then identified another ICU segmentation call in editor-worker's
+horizontal-range fallback. Its printable ASCII/tab shortcut ships in
+editor-worker 19.74.5. Unicode and CR/LF retain the existing fallback; the worker
+architecture and virtual DOM remain unchanged.
+
+The final comparison uses official v0.123.11 as the recent baseline. The v0.123.12
+candidate also contains intervening main-area, Git, extension-management,
+TypeScript watcher, title-bar and color-theme changes. Its whole-editor result
+therefore compares complete releases and cannot isolate savings caused by the
+ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
