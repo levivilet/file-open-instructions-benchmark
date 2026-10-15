@@ -41,3 +41,11 @@ python3 -m unittest discover -s tests
 
 The full hardware workflow requires an ARM64 Linux host with access to retired
 instruction counters, `perf`, X11, and the listed editor dependencies.
+
+The separate **Profile LVCE open** job samples retired instructions in the same
+editor cgroup around three normal opens. Its `profile-lvce` artifact contains
+`perf.data`, native symbol/thread reports, process command lines and acknowledged
+sampling/counter boundaries. Startup is excluded; sampling encloses the counter
+window. Sampling perturbs execution, so these diagnostic results never feed the
+published report. JavaScript JIT frames may be unresolved; use the process/native
+attribution to select a focused JavaScript profile next.
