@@ -13,10 +13,12 @@ import uuid
 
 import benchmark
 from counters import Capture
+from open_trace import OpenTrace
 
 
 class ProfiledCapture(Capture):
     def __enter__(self):
+        self.trace = None
         self.profile = None
         self.profile_log = None
         self.output = Path('results/profiles') / uuid.uuid4().hex
@@ -24,7 +26,13 @@ class ProfiledCapture(Capture):
         super().__enter__()
         return self
 
+    def launch(self, command, *args, **kwargs):
+        self.debug_port = int(next(arg.split('=', 1)[1] for arg in command
+                                   if arg.startswith('--remote-debugging-port=')))
+        return super().launch(command, *args, **kwargs)
+
     def start(self):
+        self.trace = OpenTrace(self.debug_port)
         # Capture has already launched/settled the editor. Acknowledge the
         # sampler before enabling the ordinary hardware counter so that no
         # opening work is missed. Stop sampling only after counter cutoff.
@@ -74,6 +82,9 @@ class ProfiledCapture(Capture):
             self.profile_control('disable')
             self.sample_stopped = time.monotonic()
             self.snapshot('after')
+            if self.trace:
+                self.trace.finish(self.output / 'chromium-trace.json')
+                self.trace = None
             self.profile.send_signal(signal.SIGINT)
             self.profile.wait(timeout=10)
             self.profile_log.flush()
@@ -96,6 +107,8 @@ class ProfiledCapture(Capture):
             if self.profile and self.profile.poll() is None:
                 self.profile.kill()
                 self.profile.wait()
+            if self.trace:
+                self.trace.close()
             if self.profile_log:
                 self.profile_log.close()
             # perf runs as root for cgroup counters and creates a mode-0600

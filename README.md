@@ -49,3 +49,7 @@ sampling/counter boundaries. Startup is excluded; sampling encloses the counter
 window. Sampling perturbs execution, so these diagnostic results never feed the
 published report. JavaScript JIT frames may be unresolved; use the process/native
 attribution to select a focused JavaScript profile next.
+
+The diagnostic job also records a Chromium trace with V8 CPU profiles, including
+dedicated workers, in `chromium-trace.json`. This trace is collected only in the
+separate diagnostic run; the ordinary instruction comparison remains untraced.
