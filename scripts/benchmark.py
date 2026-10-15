@@ -1,5 +1,6 @@
 """Measure retired CPU instructions for opening and verifying a text file."""
 import argparse
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -97,6 +98,36 @@ def window_title(window_id):
     return subprocess.check_output(['xdotool', 'getwindowname', window_id], text=True).strip()
 
 
+@contextmanager
+def diagnose_failure(editor_id, directory, details, output):
+    # This scope must exit before Capture kills the editor cgroup.
+    try:
+        yield
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        diagnostics = Path('results/diagnostics')
+        diagnostics.mkdir(parents=True, exist_ok=True)
+        screenshot_paths = {}
+        window_ids = {
+            key: details.get(key) for key in
+            ['mainWindow', 'openDialog', 'locationEntryFocus', 'secondReturnFocus']
+        }
+        for label, window_id in window_ids.items():
+            if not window_id or not str(window_id).isdigit():
+                continue
+            snapshot = directory / f'{label}.xwd'
+            snapshot_result = subprocess.run(
+                ['xwd', '-silent', '-id', hex(int(window_id)), '-out', str(snapshot)],
+                capture_output=True, text=True)
+            if snapshot_result.returncode == 0 and snapshot.exists():
+                name = f"{editor_id}-{label}-{uuid.uuid4().hex}.xwd"
+                shutil.copy2(snapshot, diagnostics / name)
+                screenshot_paths[label] = name
+        window_tree = subprocess.run(['xwininfo', '-root', '-tree'],
+                                     capture_output=True, text=True)
+        output.update(screenshots=screenshot_paths, windowTree=window_tree.stdout[-12000:])
+        raise
+
+
 def trial(editor, perf):
     with tempfile.TemporaryDirectory(prefix='file-open-trial-') as directory:
         d = Path(directory)
@@ -122,7 +153,7 @@ def trial(editor, perf):
         details = {'stage': 'launch', 'command': command, 'fixture': str(fixture)}
         failure_diagnostics = {}
         try:
-            with Capture(perf, d) as capture:
+            with Capture(perf, d) as capture, diagnose_failure(editor['id'], d, details, failure_diagnostics):
                 # Launch, first-run UI, readiness and settling are outside capture.
                 capture.cutoff()
                 with (d / 'stdout').open('w') as stdout, (d / 'stderr').open('w') as stderr:
@@ -136,7 +167,7 @@ def trial(editor, perf):
                         if window:
                             break
                         if time.monotonic() - start > 120:
-                            failure_diagnostics = {'reason': 'main window readiness timeout'}
+                            failure_diagnostics.update(reason='main window readiness timeout')
                             raise RuntimeError('main window readiness timeout')
                         time.sleep(.02)
                     time.sleep(10)
@@ -200,30 +231,8 @@ def trial(editor, perf):
             child.wait(timeout=5)
             return result
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
-            diagnostics = Path('results/diagnostics')
-            diagnostics.mkdir(parents=True, exist_ok=True)
-            screenshot_paths = {}
-            window_ids = {
-                key: details.get(key) for key in
-                ['mainWindow', 'openDialog', 'locationEntryFocus', 'secondReturnFocus']
-            }
-            for label, window_id in window_ids.items():
-                if not window_id or not str(window_id).isdigit():
-                    continue
-                snapshot = d / f'{label}.xwd'
-                snapshot_result = subprocess.run(
-                    ['xwd', '-silent', '-id', str(window_id), '-out', str(snapshot)],
-                    capture_output=True, text=True)
-                if snapshot_result.returncode == 0 and snapshot.exists():
-                    name = f"{editor['id']}-{label}-{uuid.uuid4().hex}.xwd"
-                    shutil.copy2(snapshot, diagnostics / name)
-                    screenshot_paths[label] = name
-            window_tree = subprocess.run(['xwininfo', '-root', '-tree'],
-                                         capture_output=True, text=True)
             return {'valid': False, 'error': str(error), 'command': command,
-                    'diagnostics': {**details, **failure_diagnostics,
-                                    'screenshots': screenshot_paths,
-                                    'windowTree': window_tree.stdout[-12000:]},
+                    'diagnostics': {**details, **failure_diagnostics},
                     **{name: (d / name).read_text(errors='replace')[-8000:]
                        for name in ['stdout', 'stderr', 'perf.log'] if (d / name).exists()}}
 

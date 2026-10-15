@@ -1,15 +1,19 @@
 import copy
 import json
+import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'scripts'))
 from benchmark import CONTENT, PROTOCOL, RESPONSE_WINDOW_SECONDS, is_main_window
 from counters import parse_counter
 import report
+import benchmark
 
 
 def trial(count=100):
@@ -44,6 +48,31 @@ class BenchmarkTest(unittest.TestCase):
         self.assertFalse(is_main_window(missing))
         for kind in ['SPLASH', 'DIALOG', 'UTILITY', 'MENU']:
             self.assertFalse(is_main_window(mapped + f'_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_{kind}'))
+
+    def test_failure_diagnostics_run_before_editor_cleanup(self):
+        events = []
+        capture = MagicMock()
+        capture.__enter__.return_value = capture
+        capture.__exit__.side_effect = lambda *args: events.append('cleanup') or False
+        capture.launch.side_effect = RuntimeError('launch failed')
+
+        def inspect_windows(*args, **kwargs):
+            events.append('diagnostics')
+            return subprocess.CompletedProcess(args[0], 0, stdout='live window tree')
+
+        original_directory = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                with patch.object(benchmark, 'Capture', return_value=capture), \
+                        patch.object(benchmark.subprocess, 'run', side_effect=inspect_windows):
+                    data = benchmark.trial({'id': 'lvce', 'binary': 'lvce'}, 'perf')
+            finally:
+                os.chdir(original_directory)
+        self.assertEqual(events, ['diagnostics', 'cleanup'])
+        self.assertFalse(data['valid'])
+        self.assertEqual(data['error'], 'launch failed')
+        self.assertEqual(data['diagnostics']['windowTree'], 'live window tree')
 
     def test_counter_rejects_unsupported_zero_and_multiplexing(self):
         self.assertEqual(parse_counter('123;;instructions;group;100;100.00;;'), 123)
