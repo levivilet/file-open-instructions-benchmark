@@ -61,3 +61,9 @@ the normal protocol, fresh profile and exact path/content checks. The separate
 `paired-lvce` artifact preserves every counter and a deterministic bootstrap
 interval for mean paired savings. Inspect raw results before claiming a gain;
 an interval spanning zero is inconclusive.
+
+The ASCII grapheme investigation uses v0.123.9 as its controlled baseline. The
+source difference to v0.123.10 is only the text-measurement-worker 1.25.1 → 1.25.2
+dependency update, so the paired comparison isolates that optimization. Earlier
+v0.122.9 and v0.123.8 measurements establish the historical cost; they should not
+be used to attribute other intervening changes to this fast path.
