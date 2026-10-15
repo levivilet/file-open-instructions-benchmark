@@ -62,13 +62,19 @@ the normal protocol, fresh profile and exact path/content checks. The separate
 interval for mean paired savings. Inspect raw results before claiming a gain;
 an interval spanning zero is inconclusive.
 
-The ASCII grapheme investigation uses v0.123.9 as its controlled baseline. The
-source difference to v0.123.10 is only the text-measurement-worker 1.25.1 → 1.25.2
-dependency update, so the paired comparison isolates that optimization. Earlier
-v0.122.9 and v0.123.8 measurements establish the historical cost; they should not
-be used to attribute other intervening changes to this fast path.
+The initial ASCII grapheme comparison used v0.123.9/v0.123.10, whose source
+difference was only text-measurement-worker 1.25.1 → 1.25.2. Ten pairs were
+inconclusive (mean savings −6.65M instructions, bootstrap 95% interval −29.45M to
++6.95M); a fixed forty-pair follow-up was also inconclusive (−2.76M, interval
+−10.93M to +2.49M). Every trial was retained, including the initial low baseline.
 
-The initial ten-pair v0.123.9/v0.123.10 comparison was inconclusive (mean paired
-savings −6.65M instructions, bootstrap 95% interval −29.45M to +6.95M).
-A fixed forty-pair follow-up retains all trials, the same protocol and both
-orders; it increases precision without excluding the initial outlying pair.
+Profiles then identified another ICU segmentation call in editor-worker's
+horizontal-range fallback. Its printable ASCII/tab shortcut ships in
+editor-worker 19.74.5. Unicode and CR/LF retain the existing fallback; the worker
+architecture and virtual DOM remain unchanged.
+
+The final comparison uses official v0.123.11 as the recent baseline. The v0.123.12
+candidate also contains intervening main-area, Git, extension-management,
+TypeScript watcher, title-bar and color-theme changes. Its whole-editor result
+therefore compares complete releases and cannot isolate savings caused by the
+ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
