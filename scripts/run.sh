@@ -9,4 +9,4 @@ for attempt in {1..100}; do
   sleep .05
 done
 test "$ready" -eq 1
-sudo --preserve-env=DISPLAY,XAUTHORITY,BENCHMARK_RUN_URL,BENCHMARK_COMMIT python3 "${3:-scripts/benchmark.py}" --editor "$1" --perf "$2" --repeats 3
+sudo --preserve-env=DISPLAY,XAUTHORITY,BENCHMARK_RUN_URL,BENCHMARK_COMMIT python3 "${3:-scripts/benchmark.py}" --editor "$1" --perf "$2" --repeats "${4:-3}"

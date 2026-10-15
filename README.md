@@ -53,3 +53,11 @@ attribution to select a focused JavaScript profile next.
 The diagnostic job also records a Chromium trace with V8 CPU profiles, including
 dedicated workers, in `chromium-trace.json`. This trace is collected only in the
 separate diagnostic run; the ordinary instruction comparison remains untraced.
+
+**Paired LVCE comparison** measures ten uninstrumented pairs against the frozen
+`config/lvce-baseline.json` release. Both binaries are checksum-verified and run
+on the same ARM64 host, alternating which version goes first. Each open retains
+the normal protocol, fresh profile and exact path/content checks. The separate
+`paired-lvce` artifact preserves every counter and a deterministic bootstrap
+interval for mean paired savings. Inspect raw results before claiming a gain;
+an interval spanning zero is inconclusive.
