@@ -98,6 +98,11 @@ class ProfiledCapture(Capture):
                 self.profile.wait()
             if self.profile_log:
                 self.profile_log.close()
+            # perf runs as root for cgroup counters and creates a mode-0600
+            # recording. The unprivileged artifact uploader must read it.
+            data = self.output / 'perf.data'
+            if data.exists():
+                data.chmod(0o644)
 
 
 if __name__ == '__main__':
