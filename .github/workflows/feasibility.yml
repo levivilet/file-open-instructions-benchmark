@@ -1,0 +1,29 @@
+name: ARM counter feasibility
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  counters:
+    name: ARM instruction counters
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic
+      - name: Probe retired instruction counters
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          test -n "$PERF"
+          sudo sysctl kernel.perf_event_paranoid=-1
+          python3 scripts/probe.py "$PERF"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: arm-counter-feasibility
+          path: results/
+          if-no-files-found: error
