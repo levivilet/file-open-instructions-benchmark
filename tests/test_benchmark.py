@@ -30,7 +30,7 @@ def trial(count=100):
 
 def result(editor, counts=(100, 300, 200)):
     trials = [dict(trial(count), repeat=index + 1) for index, count in enumerate(counts)]
-    if editor['id'] in {'vscode', 'geany', 'lapce'}:
+    if editor['id'] in {'vscode', 'geany'}:
         for item in trials:
             item['windowTitle'] = 'hello.txt - ' + editor['name']
     host = {'machine': 'aarch64'}
@@ -44,7 +44,6 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(CONTENT, 'hello world')
         self.assertEqual(RESPONSE_WINDOW_SECONDS, 1.0)
         self.assertIn('Ctrl+O', PROTOCOL['action'])
-        self.assertIn('Lapce', PROTOCOL['action'])
         self.assertIn('File > Open File', PROTOCOL['action'])
         self.assertIn('clipboard', PROTOCOL['excluded'])
 
@@ -59,10 +58,8 @@ class BenchmarkTest(unittest.TestCase):
 
     def test_native_editor_commands_start_without_opening_the_fixture(self):
         geany = next(editor for editor in report.EDITORS if editor['id'] == 'geany')
-        lapce = next(editor for editor in report.EDITORS if editor['id'] == 'lapce')
         self.assertEqual(command_for(geany, Path('/tmp/profile'), 1234),
                          ['geany', '--new-instance', '--no-session'])
-        self.assertEqual(command_for(lapce, Path('/tmp/profile'), 1234)[-1], '--new')
 
     def test_clipboard_verification_waits_for_delayed_editor_copy(self):
         results = [subprocess.CompletedProcess(['xclip'], 1, '', 'no selection'),
@@ -139,7 +136,7 @@ class BenchmarkTest(unittest.TestCase):
                 path = root / ('open-' + editor['id'])
                 path.mkdir()
                 (path / 'results.json').write_text(json.dumps(result(editor)))
-            self.assertEqual(len(report.load_results(root)), 4)
+            self.assertEqual(len(report.load_results(root)), 3)
             path = root / ('open-' + report.EDITORS[0]['id']) / 'results.json'
             path.write_text(json.dumps(result(dict(report.EDITORS[0], version='wrong'))))
             with self.assertRaises(ValueError):
@@ -164,7 +161,6 @@ class BenchmarkTest(unittest.TestCase):
             page = (root / 'index.html').read_text()
             self.assertIn('hello world', page)
             self.assertIn('Geany', page)
-            self.assertIn('Lapce', page)
             self.assertIn('Median instructions', page)
             self.assertIn('Download JSON', page)
 
