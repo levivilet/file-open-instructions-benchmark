@@ -33,6 +33,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(CONTENT, 'hello world')
         self.assertEqual(RESPONSE_WINDOW_SECONDS, 1.0)
         self.assertIn('Ctrl+O', PROTOCOL['action'])
+        self.assertIn('File > Open File', PROTOCOL['action'])
         self.assertIn('clipboard', PROTOCOL['excluded'])
 
     def test_main_window_type_defaults_and_rejections(self):

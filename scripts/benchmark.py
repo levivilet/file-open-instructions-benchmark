@@ -16,8 +16,8 @@ RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
     'version': 1,
     'metric': 'retired hardware instructions (user and kernel)',
-    'action': 'open the prepared hello.txt fixture through Ctrl+O, Ctrl+L, absolute path, Return',
-    'boundary': 'acknowledged perf enable before Ctrl+O through acknowledged disable 1.0 seconds after Return',
+    'action': 'open the prepared hello.txt fixture; VS Code uses Ctrl+O and LVCE uses File > Open File; both enter its absolute path with Ctrl+L',
+    'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after the file-open Return',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
     'accounting': 'per-CPU cgroup; includes editor descendants and all work during the open response window',
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
@@ -75,6 +75,21 @@ def wait_for_open_dialog(main_window, timeout=10):
     raise RuntimeError('open-file dialog did not take focus')
 
 
+def trigger_open(editor_id, window_id):
+    if editor_id == 'lvce':
+        # LVCE exposes Open File in its custom File menu, without a Ctrl+O binding.
+        subprocess.run(['xdotool', 'mousemove', '--window', window_id, '22', '16', 'click', '1'], check=True)
+        time.sleep(.15)
+        subprocess.run(['xdotool', 'mousemove', '--window', window_id, '80', '104', 'click', '1'], check=True)
+    else:
+        subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+o'], check=True)
+    return wait_for_open_dialog(window_id)
+
+
+def window_title(window_id):
+    return subprocess.check_output(['xdotool', 'getwindowname', window_id], text=True).strip()
+
+
 def trial(editor, perf):
     with tempfile.TemporaryDirectory(prefix='file-open-trial-') as directory:
         d = Path(directory)
@@ -130,11 +145,18 @@ def trial(editor, perf):
                     time.sleep(.5)
                     capture.start()
                     measured_started = time.monotonic()
-                    subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+o'], check=True)
-                    details['openDialog'] = wait_for_open_dialog(window_id)
+                    details['openDialog'] = trigger_open(editor['id'], window_id)
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+l'], check=True)
                     subprocess.run(['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', str(fixture)], check=True)
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
+                    # GTK's location entry can accept the path and return to the
+                    # chooser before its Open action. Submit again only if the
+                    # document title has not changed after the first Return.
+                    title_deadline = time.monotonic() + .5
+                    while fixture.name not in window_title(window_id) and time.monotonic() < title_deadline:
+                        time.sleep(.02)
+                    if fixture.name not in window_title(window_id):
+                        subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
                     opened_at = time.monotonic()
                     remaining = opened_at + RESPONSE_WINDOW_SECONDS - time.monotonic()
                     if remaining > 0:
@@ -148,7 +170,7 @@ def trial(editor, perf):
                                   measurementSeconds=capture.disabled_at-measured_started,
                                   command=command)
                     details['stage'] = 'verify-document'
-                    title = subprocess.check_output(['xdotool', 'getwindowname', window_id], text=True).strip()
+                    title = window_title(window_id)
                     if fixture.name not in title:
                         raise RuntimeError(f'editor title does not identify opened fixture: {title!r}')
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+a'], check=True)
