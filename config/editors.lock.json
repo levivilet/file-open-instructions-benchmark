@@ -16,5 +16,12 @@
     "url": "https://vscode.download.prss.microsoft.com/dbazure/download/stable/7baac39ec3ca969dab74ac12c097f6a486e46593/code-stable-arm64-1791832958.tar.gz",
     "sha256": "4d41625900780ab8b3fbe45cbae572d6ec61977ed33685b5326bf81ac12a1a40",
     "binary": "VSCode-linux-arm64/code"
+  },
+  {
+    "id": "geany",
+    "name": "Geany",
+    "version": "2.0-1build2",
+    "binary": "geany",
+    "package": "geany"
   }
 ]

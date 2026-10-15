@@ -34,7 +34,7 @@ def validate_result(data, editor_id):
         if (trial.get('cutoffAcknowledged') is not True
                 or trial.get('documentLoaded') is not True
                 or trial.get('documentContent') != CONTENT
-                or (editor_id == 'vscode' and 'hello.txt' not in trial.get('windowTitle', ''))
+                or (editor_id in {'vscode', 'geany'} and 'hello.txt' not in trial.get('windowTitle', ''))
                 or (editor_id == 'lvce' and (not trial.get('fixture', '').endswith('/hello.txt')
                                              or trial.get('documentPath') != trial['fixture']))
                 or not trial.get('readiness')
@@ -70,6 +70,8 @@ def load_results(results_root):
         data = validate_result(json.loads(found[editor['id']].read_text()), editor['id'])
         if data['editor'] != editor or data['host'].get('machine') != 'aarch64':
             raise ValueError(f"{editor['id']}: version or architecture mismatch")
+        if editor.get('package') and data['host'].get('packageVersion') != editor['version']:
+            raise ValueError(f"{editor['id']}: installed package version mismatch")
         if results and data['protocol'] != results[0]['data']['protocol']:
             raise ValueError('mixed measurement protocols')
         results.append({'editor': editor, 'data': data})
@@ -105,13 +107,16 @@ def build_report(results, output, run_url, commit):
     (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     maximum = max(entry['medianInstructions'] for entry in entries)
     chart_max = max(1, math.ceil(maximum * 1.1))
+    chart_width = 900
+    slot_width = chart_width / len(entries)
+    bar_width = min(180, slot_width * .72)
     bars = []
     for index, entry in enumerate(entries):
-        x = 110 + index * 380
+        x = slot_width * index + (slot_width - bar_width) / 2
         bar_height = 240 * entry['medianInstructions'] / chart_max
-        bars.append(f"<g><rect x='{x}' y='{280 - bar_height:.1f}' width='180' height='{bar_height:.1f}'/>")
-        bars.append(f"<text x='{x + 90}' y='315' text-anchor='middle'>{html.escape(entry['name'])}</text>")
-        bars.append(f"<text x='{x + 90}' y='{270 - bar_height:.1f}' text-anchor='middle'>"
+        bars.append(f"<g><rect x='{x:.1f}' y='{280 - bar_height:.1f}' width='{bar_width:.1f}' height='{bar_height:.1f}'/>")
+        bars.append(f"<text x='{x + bar_width / 2:.1f}' y='315' text-anchor='middle'>{html.escape(entry['name'])}</text>")
+        bars.append(f"<text x='{x + bar_width / 2:.1f}' y='{270 - bar_height:.1f}' text-anchor='middle'>"
                     f"{entry['medianInstructions'] / 1e6:.1f}M</text></g>")
     safe_run, safe_commit = html.escape(run_url, quote=True), html.escape(commit)
     page = f"""<!doctype html>
@@ -123,9 +128,9 @@ th,td{{padding:.7rem;border-bottom:1px solid #d7e0e8;text-align:left}}th{{backgr
 svg{{width:100%;max-width:900px;background:white}}rect{{fill:#2477ae}}text{{font:14px system-ui,sans-serif;fill:#17212b}}
 </style></head><body><main><h1>File-open instructions benchmark</h1>
 <p>Latest complete run: <a href='{safe_run}'>GitHub Actions</a> · commit <code>{safe_commit}</code></p>
-<p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code and File &gt; Open File in LVCE), includes the file chooser and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
-<p>The Linux ARM64 comparison includes both required editors. All {len(entries)} completed with valid measurements.</p>
-<svg viewBox='0 0 900 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
+<p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code and Geany; File &gt; Open File in LVCE), includes the file chooser and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
+<p>The Linux ARM64 comparison includes all required editors. All {len(entries)} completed with valid measurements.</p>
+<svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
 <table><thead><tr><th>Editor</th><th>Version</th><th>Median instructions to open file</th><th>Trials</th><th>Raw data</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table><p><a href='report.json'>Download complete report</a></p></main></body></html>"""
     (output / 'index.html').write_text(page)
