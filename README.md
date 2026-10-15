@@ -8,9 +8,9 @@ Each result opens a temporary `hello.txt` whose bytes are exactly `hello world`.
 The editor starts with a fresh HOME and XDG profile without the file. After a
 normal main window appears and settles for ten seconds, the controller focuses
 the editor and opens the file through its normal open-file UI: Ctrl+O in VS Code
-and File > Open File in LVCE. It enters the absolute path with Ctrl+L and Return.
+and File > Open File in LVCE. It enters the absolute path with Ctrl+L and clicks the chooser’s Open button.
 The measured window begins immediately before the open command and ends after
-a fixed one-second response window following Return. The editor process tree is
+a fixed one-second response window following that click. The editor process tree is
 counted in a dedicated cgroup; the controller, X server, window manager and
 external keyboard driver stay outside it. Startup, fixture preparation,
 readiness, settling, focus, clipboard/title verification and cleanup are

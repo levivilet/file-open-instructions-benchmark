@@ -20,7 +20,7 @@ PROTOCOL = {
     'version': 1,
     'metric': 'retired hardware instructions (user and kernel)',
     'action': 'open the prepared hello.txt fixture; VS Code uses Ctrl+O and LVCE uses File > Open File; both enter its absolute path with Ctrl+L',
-    'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after the file-open Return',
+    'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
     'accounting': 'per-CPU cgroup; includes editor descendants and all work during the open response window',
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
@@ -40,7 +40,7 @@ def command_for(editor, home):
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
     if editor['id'] == 'lvce':
         args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
-                '--user-data-dir', str(home / 'profile')]
+                '--user-data-dir=' + str(home / 'profile')]
     return [binary, *args]
 
 
@@ -84,7 +84,7 @@ def wait_for_open_dialog(main_window, details, timeout=10):
 def trigger_open(editor_id, window_id, details):
     if editor_id == 'lvce':
         # LVCE exposes Open File in its custom File menu, without a Ctrl+O binding.
-        subprocess.run(['xdotool', 'mousemove', '--window', window_id, '22', '16', 'click', '1'], check=True)
+        subprocess.run(['xdotool', 'mousemove', '--window', window_id, '49', '14', 'click', '1'], check=True)
         time.sleep(.15)
         details['lvceMenuFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
         details['lvceTitleAfterFileClick'] = window_title(window_id)
@@ -192,18 +192,14 @@ def trial(editor, perf):
                     details['locationEntryTitle'] = subprocess.check_output(
                         ['xdotool', 'getwindowname', details['locationEntryFocus']], text=True).strip()
                     subprocess.run(['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', str(fixture)], check=True)
-                    subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
-                    # GTK's location entry can accept the path and return to the
-                    # chooser before its Open action. Submit again only if the
-                    # document title has not changed after the first Return.
-                    title_deadline = time.monotonic() + .5
-                    while fixture.name not in window_title(window_id) and time.monotonic() < title_deadline:
-                        time.sleep(.02)
-                    details['titleAfterFirstReturn'] = window_title(window_id)
-                    if fixture.name not in details['titleAfterFirstReturn']:
-                        details['secondReturnFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
-                        subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
-                    details['titleAfterOpenSubmit'] = window_title(window_id)
+                    # Activate the chooser's Open button. Return in GTK's
+                    # location entry did not submit the selected file in CI.
+                    geometry = subprocess.check_output(
+                        ['xdotool', 'getwindowgeometry', '--shell', details['openDialog']], text=True)
+                    dimensions = dict(line.split('=', 1) for line in geometry.splitlines() if '=' in line)
+                    subprocess.run(['xdotool', 'mousemove', '--window', details['openDialog'],
+                                    str(int(dimensions['WIDTH']) - 50),
+                                    str(int(dimensions['HEIGHT']) - 23), 'click', '1'], check=True)
                     opened_at = time.monotonic()
                     remaining = opened_at + RESPONSE_WINDOW_SECONDS - time.monotonic()
                     if remaining > 0:
