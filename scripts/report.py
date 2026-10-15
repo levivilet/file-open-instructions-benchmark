@@ -34,7 +34,9 @@ def validate_result(data, editor_id):
         if (trial.get('cutoffAcknowledged') is not True
                 or trial.get('documentLoaded') is not True
                 or trial.get('documentContent') != CONTENT
-                or 'hello.txt' not in trial.get('windowTitle', '')
+                or (editor_id == 'vscode' and 'hello.txt' not in trial.get('windowTitle', ''))
+                or (editor_id == 'lvce' and (not trial.get('fixture', '').endswith('/hello.txt')
+                                             or trial.get('documentPath') != trial['fixture']))
                 or not trial.get('readiness')
                 or not isinstance(trial.get('focusPid'), int)
                 or trial.get('focusPid') not in trial.get('pidsAtOpen', [])

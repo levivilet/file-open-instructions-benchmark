@@ -21,6 +21,7 @@ def trial(count=100):
             'openDispatchSeconds': .02, 'openToCutoffSeconds': 1.0,
             'source': 'perf stat instructions, per-CPU cgroup',
             'documentLoaded': True, 'documentContent': CONTENT,
+            'documentPath': '/tmp/trial/hello.txt', 'fixture': '/tmp/trial/hello.txt',
             'windowTitle': 'hello.txt - LVCE Editor', 'focusPid': 12,
             'pidsAtOpen': [12, 14], 'readiness': {'windowId': '1'},
             'cutoffAcknowledged': True,
@@ -85,7 +86,7 @@ class BenchmarkTest(unittest.TestCase):
         data = result(editor)
         report.validate_result(data, editor['id'])
         invalid = [{'documentLoaded': False}, {'documentContent': ''},
-                   {'windowTitle': 'Untitled'}, {'cutoffAcknowledged': False},
+                   {'documentPath': '/tmp/other/hello.txt'}, {'cutoffAcknowledged': False},
                    {'focusPid': 999}, {'instructions': 0}, {'valid': False}]
         for changes in invalid:
             broken = copy.deepcopy(data)
@@ -94,6 +95,18 @@ class BenchmarkTest(unittest.TestCase):
                 report.validate_result(broken, editor['id'])
         with self.assertRaises(ValueError):
             report.validate_result({'editor': editor, 'trials': [trial()]}, editor['id'])
+
+    def test_identity_verification_is_specific_to_editor(self):
+        for editor in report.EDITORS:
+            data = result(editor)
+            if editor['id'] == 'lvce':
+                data['trials'][0]['windowTitle'] = 'Lvce Editor'
+                report.validate_result(data, editor['id'])
+                data['trials'][0]['documentPath'] = '/tmp/wrong/hello.txt'
+            else:
+                data['trials'][0]['windowTitle'] = 'Visual Studio Code'
+            with self.subTest(editor=editor['id']), self.assertRaises(ValueError):
+                report.validate_result(data, editor['id'])
 
     def test_report_requires_complete_matrix_and_matching_versions(self):
         with tempfile.TemporaryDirectory() as directory:

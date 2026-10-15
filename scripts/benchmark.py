@@ -10,6 +10,9 @@ import subprocess
 import tempfile
 import time
 import uuid
+from urllib.parse import unquote, urlparse
+
+from cdp import Page
 
 from counters import Capture
 
@@ -17,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = 'hello world'
 RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
-    'version': 1,
+    'version': 2,
     'metric': 'retired hardware instructions (user and kernel)',
     'action': 'open the prepared hello.txt fixture; VS Code uses Ctrl+O and LVCE uses File > Open File; both enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
@@ -28,7 +31,7 @@ PROTOCOL = {
     'cache': 'warm OS filesystem caches permitted; application profiles always fresh',
     'launcher': 'editor cgroup contains editor process tree; controller, X server and desktop stay outside',
     'cutoff': 'perf disable acknowledgement after fixed response window; control latency through acknowledgement is included',
-    'verification': 'after cutoff, title must name hello.txt and select-all/copy must return exactly hello world',
+    'verification': 'after cutoff, VS Code window title must name hello.txt, LVCE selected tab must identify the exact fixture path, and select-all/copy must return exactly hello world',
     'repeats': 3,
 }
 
@@ -40,7 +43,7 @@ def command_for(editor, home):
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
     if editor['id'] == 'lvce':
         args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
-                '--user-data-dir=' + str(home / 'profile')]
+                '--user-data-dir=' + str(home / 'profile'), '--remote-debugging-port=0']
     return [binary, *args]
 
 
@@ -197,9 +200,16 @@ def trial(editor, perf):
                     geometry = subprocess.check_output(
                         ['xdotool', 'getwindowgeometry', '--shell', details['openDialog']], text=True)
                     dimensions = dict(line.split('=', 1) for line in geometry.splitlines() if '=' in line)
-                    subprocess.run(['xdotool', 'mousemove', '--window', details['openDialog'],
-                                    str(int(dimensions['WIDTH']) - 50),
-                                    str(int(dimensions['HEIGHT']) - 23), 'click', '1'], check=True)
+                    details['dialogGeometry'] = dimensions
+                    if editor['id'] == 'vscode':
+                        # Commit GTK's location entry before activating Open.
+                        subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
+                    dialog_alive = subprocess.run(
+                        ['xdotool', 'getwindowname', details['openDialog']], capture_output=True)
+                    if dialog_alive.returncode == 0:
+                        subprocess.run(['xdotool', 'mousemove', '--window', details['openDialog'],
+                                        str(int(dimensions['WIDTH']) - 50),
+                                        str(int(dimensions['HEIGHT']) - 23), 'click', '1'], check=True)
                     opened_at = time.monotonic()
                     remaining = opened_at + RESPONSE_WINDOW_SECONDS - time.monotonic()
                     if remaining > 0:
@@ -214,7 +224,19 @@ def trial(editor, perf):
                                   command=command)
                     details['stage'] = 'verify-document'
                     title = window_title(window_id)
-                    if fixture.name not in title:
+                    document_path = None
+                    if editor['id'] == 'lvce':
+                        port = int((home / 'profile/DevToolsActivePort').read_text().splitlines()[0])
+                        page = Page(port, timeout=5)
+                        try:
+                            tab_path = page.evaluate("document.querySelector('.MainTabSelected')?.getAttribute('title')")
+                        finally:
+                            page.close()
+                        details['selectedTabPath'] = tab_path
+                        document_path = unquote(urlparse(tab_path).path) if tab_path else None
+                        if document_path != str(fixture):
+                            raise RuntimeError(f'selected tab does not identify fixture: {tab_path!r}')
+                    elif fixture.name not in title:
                         raise RuntimeError(f'editor title does not identify opened fixture: {title!r}')
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+a'], check=True)
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+c'], check=True)
@@ -223,7 +245,8 @@ def trial(editor, perf):
                     details.update(windowTitle=title, copiedContent=copied)
                     if copied != CONTENT:
                         raise RuntimeError(f'opened document content mismatch: expected {CONTENT!r}, got {copied!r}')
-                    result.update(documentLoaded=True, documentContent=copied, windowTitle=title)
+                    result.update(documentLoaded=True, documentContent=copied, windowTitle=title,
+                                  documentPath=document_path)
             child.wait(timeout=5)
             return result
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:

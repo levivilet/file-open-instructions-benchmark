@@ -16,8 +16,9 @@ external keyboard driver stay outside it. Startup, fixture preparation,
 readiness, settling, focus, clipboard/title verification and cleanup are
 excluded. Activity by the editor during the response window is included.
 
-After cutoff, the benchmark requires the window title to identify `hello.txt`
-and copies the selected document to verify its contents exactly match
+After cutoff, the benchmark requires VS Code’s window title to identify
+`hello.txt` and LVCE’s selected tab to identify the exact fixture path (read through
+CDP only after counting stops, since LVCE keeps a static native window title). It copies the selected document to verify its contents exactly match
 `hello world`. Each editor has three fresh-profile trials. The report shows the
 median and publishes raw `perf` output, trial boundaries, protocol, editor
 versions, CPU/host details and run identity. Unsupported, zero or multiplexed
