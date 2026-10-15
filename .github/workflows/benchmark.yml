@@ -99,7 +99,7 @@ jobs:
     name: Paired LVCE comparison
     needs: accounting
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - name: Install desktop, clipboard and perf
@@ -111,13 +111,13 @@ jobs:
           sudo sysctl kernel.perf_event_paranoid=-1
       - name: Install pinned ARM editor
         run: python3 scripts/install.py --editors "lvce"
-      - name: Measure ten alternating-order pairs
+      - name: Measure forty alternating-order pairs
         env:
           BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BENCHMARK_COMMIT: ${{ github.sha }}
         run: |
           PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
-          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_open.py 10
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_open.py 40
       - uses: actions/upload-artifact@v5
         if: always()
         with:

@@ -54,7 +54,7 @@ The diagnostic job also records a Chromium trace with V8 CPU profiles, including
 dedicated workers, in `chromium-trace.json`. This trace is collected only in the
 separate diagnostic run; the ordinary instruction comparison remains untraced.
 
-**Paired LVCE comparison** measures ten uninstrumented pairs against the frozen
+**Paired LVCE comparison** measures forty uninstrumented pairs against the frozen
 `config/lvce-baseline.json` release. Both binaries are checksum-verified and run
 on the same ARM64 host, alternating which version goes first. Each open retains
 the normal protocol, fresh profile and exact path/content checks. The separate
@@ -67,3 +67,8 @@ source difference to v0.123.10 is only the text-measurement-worker 1.25.1 → 1.
 dependency update, so the paired comparison isolates that optimization. Earlier
 v0.122.9 and v0.123.8 measurements establish the historical cost; they should not
 be used to attribute other intervening changes to this fast path.
+
+The initial ten-pair v0.123.9/v0.123.10 comparison was inconclusive (mean paired
+savings −6.65M instructions, bootstrap 95% interval −29.45M to +6.95M).
+A fixed forty-pair follow-up retains all trials, the same protocol and both
+orders; it increases precision without excluding the initial outlying pair.
