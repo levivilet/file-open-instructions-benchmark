@@ -20,7 +20,7 @@
   {
     "id": "geany",
     "name": "Geany",
-    "version": "2.0-4ubuntu5",
+    "version": "2.0-1build2",
     "binary": "geany",
     "package": "geany"
   },
