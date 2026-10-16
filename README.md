@@ -76,7 +76,7 @@ horizontal-range fallback. Its printable ASCII/tab shortcut ships in
 editor-worker 19.74.5. Unicode and CR/LF retain the existing fallback; the worker
 architecture and virtual DOM remain unchanged.
 
-The final comparison uses official v0.123.11 as the recent baseline. The v0.123.12
+The earlier comparison used official v0.123.11 as the recent baseline. The v0.123.12
 candidate also contains intervening main-area, Git, extension-management,
 TypeScript watcher, title-bar and color-theme changes. Its whole-editor result
 therefore compares complete releases and cannot isolate savings caused by the
@@ -108,3 +108,18 @@ comparison from a different workflow run. Deployment waits for this comparison.
 A release comparison includes all changes between its tags; the separate
 `paired-icon` diagnostic artifact changes only the icon lookup function in the
 baseline package and is never presented as an official release.
+
+Zed uses its pinned official ARM64 native binary under X11 with Mesa software
+Vulkan (`ZED_ALLOW_EMULATED_GPU=1`). Finish Setup (Ctrl+Enter) runs before counting.
+A private D-Bus session and GTK file-chooser portal use a separate temporary
+HOME/XDG profile. They stay outside the editor cgroup, as do the X server and
+input driver; their instructions are excluded. The measured editor still
+performs its normal Ctrl+O request and handles the chooser response. After
+cutoff, Ctrl+K P copies the exact document path, then select-all/copy verifies
+the exact contents. No fixture is passed on the launch command line.
+
+The current official-release comparison uses v0.123.12 as baseline and v0.123.13
+as candidate. Besides the icon filename-table optimization, v0.123.13 includes
+titlebarless visibility initialization and editor-worker 19.74.6. Use the separate
+controlled icon experiment to isolate that optimization. The merged editor matrix
+is recorded as protocol v5; do not pool it with earlier protocol runs.
