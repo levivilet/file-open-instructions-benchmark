@@ -116,33 +116,46 @@ class VerifiedCapture(Capture):
         page = Page(self.debug_port, timeout=5)
         try:
             targets = page.call('Target.getTargets')['targetInfos']
-            worker = next(t for t in targets if t['type'] == 'worker' and
-                          t['url'].split('?')[0].endswith('/packages/editor-worker/dist/editorWorkerMain.js'))
-            session = page.call('Target.attachToTarget', targetId=worker['targetId'], flatten=True)['sessionId']
-            scripts = []
+            observations = []
+            matched = None
+            for worker in targets:
+                if worker['type'] != 'worker':
+                    continue
+                session = page.call('Target.attachToTarget', targetId=worker['targetId'], flatten=True)['sessionId']
+                scripts = []
 
-            def observe(method, params=None):
-                page.counter += 1
-                request_id = page.counter
-                page.socket.send(json.dumps({'id': request_id, 'sessionId': session,
-                                             'method': method, 'params': params or {}}))
-                while True:
-                    message = json.loads(page.socket.recv())
-                    if message.get('sessionId') == session and message.get('method') == 'Debugger.scriptParsed':
-                        scripts.append(message['params']['url'])
-                    if message.get('id') == request_id:
-                        if 'error' in message or message.get('result', {}).get('exceptionDetails'):
-                            raise RuntimeError(message)
-                        return message.get('result', {})
+                def observe(method, params=None):
+                    page.counter += 1
+                    request_id = page.counter
+                    page.socket.send(json.dumps({'id': request_id, 'sessionId': session,
+                                                 'method': method, 'params': params or {}}))
+                    while True:
+                        message = json.loads(page.socket.recv())
+                        if message.get('sessionId') == session and message.get('method') == 'Debugger.scriptParsed':
+                            scripts.append(message['params']['url'])
+                        if message.get('id') == request_id:
+                            if 'error' in message or message.get('result', {}).get('exceptionDetails'):
+                                raise RuntimeError(message)
+                            return message.get('result', {})
 
-            observe('Debugger.enable')
-            observe('Runtime.evaluate', {'expression': '0', 'returnByValue': True})
-            observe('Debugger.disable')
-            page.call('Target.detachFromTarget', sessionId=session)
-            if not any('/packages/editor-worker/dist/editorWorkerMain' in url for url in scripts):
-                raise ValueError('worker script observation did not include the known entry')
-            result['editorWorkerScripts'] = scripts
-            result['coldModuleParsed'] = any('/ColdCommandMap-' in name for name in scripts)
+                try:
+                    observe('Debugger.enable')
+                    observe('Runtime.evaluate', {'expression': '0', 'returnByValue': True})
+                    observe('Debugger.disable')
+                finally:
+                    page.call('Target.detachFromTarget', sessionId=session)
+                observations.append({'target': worker, 'scripts': scripts})
+                if any('/packages/editor-worker/dist/editorWorkerMain' in url for url in scripts):
+                    matched = observations[-1]
+                    break
+            if matched is None:
+                destination = Path('results/lazy-worker-observation.json')
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(json.dumps({'targets': targets, 'observations': observations}, indent=2) + '\n')
+                raise ValueError('post-cutoff observation did not find editor worker scripts; see lazy-worker-observation.json')
+            result['editorWorkerScripts'] = matched['scripts']
+            result['editorWorkerTarget'] = matched['target']
+            result['coldModuleParsed'] = any('/ColdCommandMap-' in name for name in matched['scripts'])
             result['observedAfterCutoff'] = True
         finally:
             page.close()
