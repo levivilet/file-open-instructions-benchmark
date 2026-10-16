@@ -48,5 +48,25 @@
         "bytes": 40
       }
     ]
+  },
+  "assetIndex": {
+    "path": "usr/lib/lvce/resources/app/config.json",
+    "inputSha256": "d47278f04e00fd609da1561d08e71236a2f49d0fb6088524e3230a180510b59a",
+    "referenceFile": "/cb9d398/extensions/builtin.language-basics-javascript/src/tokenizeJavaScript.js",
+    "headers": {
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": "text/javascript",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Resource-Policy": "same-origin",
+      "Etag": "W/\"cb9d398\""
+    },
+    "additions": [
+      "/cb9d398/packages/editor-worker/dist/ColdHandlers-Cn92aY99.js",
+      "/cb9d398/packages/editor-worker/dist/GetColorPickerRange-8fZueRb5.js",
+      "/cb9d398/packages/editor-worker/dist/GetNamedColorRange-LJAB8ndU.js",
+      "/cb9d398/packages/editor-worker/dist/editorWorkerMain-B6il0hUe.js"
+    ],
+    "outputSha256": "3b4b1822c8c2edc75cd3ab29e5ba5450de848055123232c98318e7b656e78859"
   }
 }

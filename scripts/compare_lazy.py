@@ -88,6 +88,33 @@ def prepared_outputs():
     return outputs
 
 
+def patch_asset_index(directory, variant, recipe):
+    spec = recipe['assetIndex']
+    path = directory / spec['path']
+    if install.checksum(path) != spec['inputSha256']:
+        raise ValueError('official asset index differs')
+    if variant == 'baseline':
+        return install.checksum(path)
+    config = json.loads(path.read_text())
+    reference = config['files'][spec['referenceFile']]
+    if config['headers'][reference] != spec['headers']:
+        raise ValueError('asset index JavaScript headers differ')
+    prefix = '/' + recipe['workerPath'].split('/static/', 1)[1].rsplit('/', 1)[0]
+    expected = [prefix + '/' + entry['path'] for entry in recipe['outputs']['candidate']
+                if entry['path'] != 'editorWorkerMain.js']
+    if spec['additions'] != expected:
+        raise ValueError('asset index additions differ from built chunks')
+    for uri in expected:
+        if uri in config['files']:
+            raise ValueError('unexpected existing worker chunk index entry')
+        config['files'][uri] = reference
+    content = (json.dumps(config, indent=2) + '\n').encode()
+    if hashlib.sha256(content).hexdigest() != spec['outputSha256']:
+        raise ValueError('candidate asset index differs from frozen output')
+    path.write_bytes(content)
+    return install.checksum(path)
+
+
 def patch_bundle(directory, variant, outputs):
     recipe = json.loads((ROOT / 'config/lazy-build.json').read_text())
     bundle = directory / recipe['workerPath']
@@ -101,7 +128,8 @@ def patch_bundle(directory, variant, outputs):
         if destination.exists() and destination != bundle:
             raise ValueError('unexpected existing worker chunk')
         shutil.copy2(source, destination)
-    return {'variant': variant, 'recipe': recipe}
+    asset_index = patch_asset_index(directory, variant, recipe)
+    return {'variant': variant, 'recipe': recipe, 'assetIndexSha256': asset_index}
 
 
 def session_call(page, session, method, params=None, scripts=None):
@@ -201,7 +229,8 @@ def validate_experiment(data):
         raise ValueError('lazy-command comparison identity, protocol or architecture mismatch')
     recipe = json.loads((ROOT / 'config/lazy-build.json').read_text())
     for variant, key in [('baseline', 'baselineBundlePatch'), ('candidate', 'experimentalBundlePatch')]:
-        if data.get(key) != {'variant': variant, 'recipe': recipe}:
+        index_sha = recipe['assetIndex']['inputSha256' if variant == 'baseline' else 'outputSha256']
+        if data.get(key) != {'variant': variant, 'recipe': recipe, 'assetIndexSha256': index_sha}:
             raise ValueError('lazy comparison differs from both frozen source/build transformations')
     pairs = data.get('pairs', [])
     if len(pairs) != 40:

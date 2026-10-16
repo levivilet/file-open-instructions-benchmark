@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 import os
 import subprocess
@@ -313,12 +314,13 @@ class BenchmarkTest(unittest.TestCase):
         pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
                   'baseline': observed(200), 'candidate': observed(100)} for index in range(40)]
         data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
-                'baselineBundlePatch': {'variant': 'baseline', 'recipe': recipe},
-                'experimentalBundlePatch': {'variant': 'candidate', 'recipe': recipe},
+                'baselineBundlePatch': {'variant': 'baseline', 'recipe': recipe, 'assetIndexSha256': recipe['assetIndex']['inputSha256']},
+                'experimentalBundlePatch': {'variant': 'candidate', 'recipe': recipe, 'assetIndexSha256': recipe['assetIndex']['outputSha256']},
                 'pairs': pairs, 'summary': compare_lazy.compare_open.summarize(pairs)}
         compare_lazy.validate_experiment(data)
         for mutate in [lambda d: d.pop('baselineBundlePatch'),
                        lambda d: d['experimentalBundlePatch']['recipe'].update(node='wrong'),
+                       lambda d: d['experimentalBundlePatch'].update(assetIndexSha256='wrong'),
                        lambda d: d['pairs'][0]['candidate'].update(observedAfterCutoff=False),
                        lambda d: d['pairs'][0]['candidate'].update(coldModuleParsed=True),
                        lambda d: d['pairs'][0]['candidate'].update(editorWorkerScripts=[]),
@@ -328,6 +330,37 @@ class BenchmarkTest(unittest.TestCase):
             mutate(broken)
             with self.assertRaises(ValueError):
                 compare_lazy.validate_experiment(broken)
+
+    def test_lazy_asset_index_preserves_policies_and_rejects_unexpected_chunks(self):
+        recipe = json.loads((ROOT / 'config/lazy-build.json').read_text())
+        spec = recipe['assetIndex']
+        original = {'headers': [spec['headers'], {'Content-Security-Policy': "default-src 'none'; script-src 'self'"}],
+                    'files': {spec['referenceFile']: 0, '/entryWorkerMain.js': 1}, 'version': 'fixture'}
+        raw = (json.dumps(original, indent=2) + '\n').encode()
+        spec['inputSha256'] = hashlib.sha256(raw).hexdigest()
+        expected = copy.deepcopy(original)
+        expected['files'].update({uri: 0 for uri in spec['additions']})
+        spec['outputSha256'] = hashlib.sha256((json.dumps(expected, indent=2) + '\n').encode()).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / spec['path']
+            path.parent.mkdir(parents=True)
+            path.write_bytes(raw)
+            compare_lazy.patch_asset_index(root, 'baseline', recipe)
+            self.assertEqual(path.read_bytes(), raw)
+            compare_lazy.patch_asset_index(root, 'candidate', recipe)
+            self.assertEqual(json.loads(path.read_text()), expected)
+            self.assertEqual(expected['headers'], original['headers'])
+            for mutate in [lambda r: r['assetIndex'].update(inputSha256='wrong'),
+                           lambda r: r['assetIndex'].update(outputSha256='wrong'),
+                           lambda r: r['assetIndex']['additions'].pop(),
+                           lambda r: r['assetIndex']['headers'].update(extra='wrong')]:
+                path.write_bytes(raw)
+                broken = copy.deepcopy(recipe)
+                mutate(broken)
+                with self.assertRaises(ValueError):
+                    compare_lazy.patch_asset_index(root, 'candidate', broken)
+                self.assertEqual(path.read_bytes(), raw)
 
     def test_lazy_worker_observation_requires_acknowledged_counter_cutoff(self):
         capture = object.__new__(compare_lazy.VerifiedCapture)
