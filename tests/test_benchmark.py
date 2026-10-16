@@ -27,6 +27,7 @@ import compare_plain
 import compare_cache
 import compare_compact
 import compare_lazy
+import compare_summary
 
 
 def trial(count=100):
@@ -361,6 +362,30 @@ class BenchmarkTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     compare_lazy.patch_asset_index(root, 'candidate', broken)
                 self.assertEqual(path.read_bytes(), raw)
+
+    def test_summary_comparison_requires_exact_patch_and_worker_presence_evidence(self):
+        editor = json.loads((ROOT / 'config/summary-baseline.json').read_text())
+        def observed(count, problem):
+            targets = [{'url': 'lvce://-/packages/editor-worker/dist/editorWorkerMain.js'}]
+            if problem:
+                targets.append({'url': 'lvce://-/packages/problems-view/dist/problemsViewWorkerMain.js'})
+            return dict(trial(count), observedAfterCutoff=True, observedWorkerTargets=targets, problemsWorkerObserved=problem)
+        pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': observed(200, True), 'candidate': observed(100, False)} for index in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'experimentalBundlePatch': compare_summary.SPEC, 'pairs': pairs,
+                'summary': compare_summary.compare_open.summarize(pairs)}
+        compare_summary.validate_experiment(data)
+        for mutate in [lambda d: d.update(experimentalBundlePatch={}),
+                       lambda d: d['pairs'][0]['candidate'].update(observedWorkerTargets=[]),
+                       lambda d: d['pairs'][0]['candidate'].update(problemsWorkerObserved=True),
+                       lambda d: d['pairs'][0]['candidate'].update(observedAfterCutoff=False),
+                       lambda d: d['pairs'][0]['candidate'].update(documentContent='wrong'),
+                       lambda d: d['pairs'].pop()]:
+            broken = copy.deepcopy(data)
+            mutate(broken)
+            with self.assertRaises(ValueError):
+                compare_summary.validate_experiment(broken)
 
     def test_lazy_worker_observation_requires_acknowledged_counter_cutoff(self):
         capture = object.__new__(compare_lazy.VerifiedCapture)

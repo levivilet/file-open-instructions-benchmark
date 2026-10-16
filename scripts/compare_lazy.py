@@ -208,6 +208,7 @@ class VerifiedCapture(Capture):
                     break
             if matched is None:
                 raise ValueError('post-cutoff observation did not find editor worker scripts; see lazy-worker-observation.json')
+            result['observedWorkerTargets'] = targets
             result['editorWorkerScripts'] = matched['scripts']
             result['editorWorkerTarget'] = matched['target']
             result['coldModuleParsed'] = any('/ColdHandlers-' in name for name in matched['scripts'])
