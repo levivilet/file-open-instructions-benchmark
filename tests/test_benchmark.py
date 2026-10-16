@@ -69,6 +69,7 @@ class BenchmarkTest(unittest.TestCase):
         electron = next(e for e in report.EDITORS if e['id'] == 'electron')
         for key in ['url', 'sha256', 'archive', 'binary']:
             self.assertEqual(lvce[key], electron[key])
+        self.assertIn('/download/' + lvce['version'] + '/', lvce['url'])
         command = command_for(electron, Path('/tmp/private-home'), 1234)
         self.assertIn('--remote-debugging-port=1234', command)
         self.assertIn('--user-data-dir=/tmp/private-home/profile', command)
@@ -271,22 +272,62 @@ class BenchmarkTest(unittest.TestCase):
         baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
         candidate = next(editor for editor in report.EDITORS if editor['id'] == 'lvce')
         pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
-                  'baseline': trial(120), 'candidate': trial(100)} for i in range(3)]
+                  'baseline': trial(120), 'candidate': trial(100)} for i in range(40)]
         data = {'baseline': baseline, 'candidate': candidate, 'protocol': PROTOCOL,
                 'host': {'machine': 'aarch64'}, 'pairs': pairs, 'summary': summarize(pairs)}
         self.assertEqual(report.validate_comparison(data, PROTOCOL), data)
-        for change in ['artifact', 'trial', 'order', 'summary']:
+        for change in ['artifact', 'trial', 'order', 'summary', 'count']:
             broken = copy.deepcopy(data)
             if change == 'artifact': broken['candidate']['sha256'] = 'wrong'
             if change == 'trial': broken['pairs'][0]['candidate']['documentContent'] = 'wrong'
             if change == 'order': broken['pairs'][0]['order'].reverse()
             if change == 'summary': broken['summary']['meanPairedInstructionsSaved'] = 0
+            if change == 'count': broken['pairs'].pop()
             with self.subTest(change=change), self.assertRaises(ValueError):
                 report.validate_comparison(broken, PROTOCOL)
         with tempfile.TemporaryDirectory() as directory:
             report.build_report([{'editor': candidate, 'data': result(candidate)}], Path(directory), 'run', 'sha', data)
             self.assertEqual(json.loads((Path(directory) / 'raw/paired-lvce.json').read_text()), data)
             self.assertIn('Paired official LVCE releases', (Path(directory) / 'index.html').read_text())
+
+    def test_report_cli_validates_controlled_run_identity_and_publishes_all_raw_pairs(self):
+        from compare_open import summarize
+        baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+        candidate = next(editor for editor in report.EDITORS if editor['id'] == 'lvce')
+        ipc_pin = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(120), 'candidate': trial(100)} for i in range(40)]
+        host = {'machine': 'aarch64', 'commit': 'commit', 'runUrl': 'https://example.test/run'}
+        comparison = {'baseline': baseline, 'candidate': candidate, 'protocol': PROTOCOL,
+                      'host': host, 'pairs': pairs, 'summary': summarize(pairs)}
+        ipc = dict(comparison, baseline=ipc_pin, candidate=ipc_pin,
+                   experimentalBundlePatch={'before': compare_ipc.ORIGINAL, 'after': compare_ipc.CANDIDATE})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'config').mkdir()
+            (root / 'config/lvce-baseline.json').write_text(json.dumps(baseline))
+            (root / 'docs').mkdir()
+            (root / 'docs/ipc-analysis.html').write_text('<h1>Message analysis</h1>')
+            for editor in report.EDITORS:
+                path = root / f"results/editors/open-{editor['id']}/results.json"
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps(result(editor)))
+            for folder, name, data in [('paired', 'comparison.json', comparison), ('ipc', 'ipc-comparison.json', ipc)]:
+                path = root / 'results' / folder / name
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps(data))
+            with (patch.object(report, 'ROOT', root),
+                  patch.object(sys, 'argv', ['report.py', '--run-url', host['runUrl'], '--commit', host['commit']]),
+                  patch('builtins.print')):
+                report.main()
+                self.assertEqual(json.loads((root / '.tmp/pages/raw/paired-ipc.json').read_text()), ipc)
+                self.assertEqual(json.loads((root / '.tmp/pages/report.json').read_text())['controlledIpcComparison'], ipc)
+                self.assertIn('patched bundle', (root / '.tmp/pages/index.html').read_text())
+                self.assertEqual((root / '.tmp/pages/ipc-analysis.html').read_text(), '<h1>Message analysis</h1>')
+                ipc['host'] = dict(host, commit='wrong')
+                (root / 'results/ipc/ipc-comparison.json').write_text(json.dumps(ipc))
+                with self.assertRaisesRegex(ValueError, 'different workflow'):
+                    report.main()
 
     def test_report_keeps_raw_evidence_and_reports_medians(self):
         items = [dict(editor=editor, data=result(editor, counts)) for editor, counts in

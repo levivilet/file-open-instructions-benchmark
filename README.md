@@ -1,7 +1,7 @@
 # File-open instructions benchmark
 
 This project compares retired CPU instructions used to open a small text file in
-LVCE Editor, Visual Studio Code, and Geany on Linux ARM64. The latest complete report is
+LVCE Editor, Visual Studio Code, Geany, minimal Electron and Zed on Linux ARM64. The latest complete report is
 published on [GitHub Pages](https://levivilet.github.io/file-open-instructions-benchmark/).
 
 Each result opens a temporary `hello.txt` whose bytes are exactly `hello world`.
@@ -83,7 +83,7 @@ therefore compares complete releases and cannot isolate savings caused by the
 ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
 
 The minimal Electron entry uses the **same Electron 44.7.0 runtime bytes** as
-LVCE v0.123.13: the checksum-verified LVCE Debian package is extracted separately
+LVCE v0.123.14: the checksum-verified LVCE Debian package is extracted separately
 and only `resources/app` is replaced with the small app in `electron/`. Installation
 checks LVCE's embedded runtime version first. No npm installation or second Electron
 release is involved. The app reads the selected UTF-8 file asynchronously and displays
@@ -118,8 +118,21 @@ performs its normal Ctrl+O request and handles the chooser response. After
 cutoff, Ctrl+K P copies the exact document path, then select-all/copy verifies
 the exact contents. No fixture is passed on the launch command line.
 
-The current official-release comparison uses v0.123.12 as baseline and v0.123.13
-as candidate. Besides the icon filename-table optimization, v0.123.13 includes
-titlebarless visibility initialization and editor-worker 19.74.6. Use the separate
-controlled icon experiment to isolate that optimization. The merged editor matrix
-is recorded as protocol v5; do not pool it with earlier protocol runs.
+The current official-release comparison uses v0.123.13 as baseline and v0.123.14
+as candidate. The sole application source change is LVCE #16025: view discovery
+avoids fetching the full extension inventory when every returned view already
+supplies CSS. Worker architecture, virtual DOM and file-cache freshness checks
+remain unchanged. The merged editor matrix is protocol v5; do not pool earlier
+protocols or separate runs.
+
+**Controlled IPC comparison** independently extracts two official v0.123.13
+packages, applies only the exact recorded renderer-worker function replacement
+to one, and measures forty alternating-order pairs without probes or tracing.
+It is frozen in `config/ipc-baseline.json`; the older icon diagnostic remains
+frozen separately in `config/icon-baseline.json` (v0.123.12). The report validates
+every IPC trial, its run/commit identity and summary, publishes all raw data at
+`raw/paired-ipc.json`, and links the diagnostic process/worker message analysis.
+The controlled patched bundle is diagnostic; the official .13/.14 comparison
+validates the shipped change. Report generation/deployment require both paired
+comparisons and the entire five-editor matrix. No samples or failed trials are
+silently discarded.

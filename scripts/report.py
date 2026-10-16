@@ -86,8 +86,8 @@ def validate_comparison(data, protocol):
             or data.get('protocol') != protocol or data.get('host', {}).get('machine') != 'aarch64'):
         raise ValueError('paired comparison identity, protocol or architecture mismatch')
     pairs = data.get('pairs', [])
-    if len(pairs) < 3:
-        raise ValueError('paired comparison has fewer than three pairs')
+    if len(pairs) != 40:
+        raise ValueError('paired comparison requires all forty pairs')
     for index, pair in enumerate(pairs):
         order = ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline']
         if pair.get('index') != index or pair.get('order') != order:
@@ -100,7 +100,7 @@ def validate_comparison(data, protocol):
     return data
 
 
-def build_report(results, output, run_url, commit, comparison=None):
+def build_report(results, output, run_url, commit, comparison=None, ipc_comparison=None):
     output.mkdir(parents=True, exist_ok=True)
     raw_dir = output / 'raw'
     raw_dir.mkdir(exist_ok=True)
@@ -137,7 +137,21 @@ def build_report(results, output, run_url, commit, comparison=None):
                            f"All {len(comparison['pairs'])} alternating-order pairs are retained. "
                            "This compares complete releases and includes any intervening changes. "
                            "<a href='raw/paired-lvce.json'>Download every pair and artifact identity</a>.</p>")
-    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison}
+    ipc_html = ''
+    if ipc_comparison is not None:
+        (raw_dir / 'paired-ipc.json').write_text(json.dumps(ipc_comparison, indent=2) + '\n')
+        summary = ipc_comparison['summary']
+        low, high = summary['bootstrap95MeanSavings']
+        ipc_html = (f"<h2>Controlled view-discovery IPC experiment</h2><p>Two copies of official "
+                    f"{html.escape(ipc_comparison['baseline']['version'])}, with only the recorded renderer-worker "
+                    "view-discovery function changed: skip the unused extension-inventory request when every view has CSS. "
+                    f"Mean instructions saved per open {summary['meanPairedInstructionsSaved'] / 1e6:.2f}M; "
+                    f"bootstrap 95% interval [{low / 1e6:.2f}M, {high / 1e6:.2f}M]. "
+                    "All forty uninstrumented alternating-order pairs are retained. This diagnostic uses a patched bundle; "
+                    "the official-release comparison above validates shipped packages. "
+                    "<a href='raw/paired-ipc.json'>Download every controlled pair and exact patch</a>. "
+                    "<a href='ipc-analysis.html'>Read the process/worker message-flow analysis</a>.</p>")
+    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison, 'controlledIpcComparison': ipc_comparison}
     (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     maximum = max(entry['medianInstructions'] for entry in entries)
     chart_max = max(1, math.ceil(maximum * 1.1))
@@ -167,7 +181,7 @@ svg{{width:100%;max-width:900px;background:white}}rect{{fill:#2477ae}}text{{font
 <p>The Linux ARM64 comparison includes all required editors. All {len(entries)} completed with valid measurements.</p>
 <svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
 <table><thead><tr><th>Editor</th><th>Version</th><th>Median instructions to open file</th><th>Trials</th><th>Raw data</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>{comparison_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
+<tbody>{''.join(rows)}</tbody></table>{comparison_html}{ipc_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
     (output / 'index.html').write_text(page)
 
 
@@ -183,7 +197,13 @@ def main():
                                      results[0]['data']['protocol'])
     if comparison['host'].get('commit') != args.commit or comparison['host'].get('runUrl') != args.run_url:
         raise ValueError('paired comparison belongs to a different workflow run')
-    build_report(results, args.output, args.run_url, args.commit, comparison)
+    # Import after report helpers are defined; the experiment reuses trial validation.
+    from compare_ipc import validate_experiment
+    ipc_comparison = validate_experiment(json.loads((ROOT / 'results/ipc/ipc-comparison.json').read_text()))
+    if ipc_comparison['host'].get('commit') != args.commit or ipc_comparison['host'].get('runUrl') != args.run_url:
+        raise ValueError('controlled IPC comparison belongs to a different workflow run')
+    build_report(results, args.output, args.run_url, args.commit, comparison, ipc_comparison)
+    (args.output / 'ipc-analysis.html').write_text((ROOT / 'docs/ipc-analysis.html').read_text())
     print(f'Built a complete report for {len(results)} editors at {args.output}')
 
 
