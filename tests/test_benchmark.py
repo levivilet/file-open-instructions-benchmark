@@ -25,6 +25,7 @@ import compare_render
 import compare_plain
 import compare_cache
 import compare_compact
+import compare_lazy
 
 
 def trial(count=100):
@@ -303,6 +304,37 @@ class BenchmarkTest(unittest.TestCase):
             mutate(broken)
             with self.assertRaises(ValueError):
                 compare_compact.validate_experiment(broken)
+
+    def test_lazy_comparison_guards_both_builds_and_post_cutoff_observation(self):
+        editor = json.loads((ROOT / 'config/lazy-baseline.json').read_text())
+        recipe = json.loads((ROOT / 'config/lazy-build.json').read_text())
+        def observed(count):
+            return dict(trial(count), editorWorkerScripts=[], coldModuleParsed=False, observedAfterCutoff=True)
+        pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': observed(200), 'candidate': observed(100)} for index in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'baselineBundlePatch': {'variant': 'baseline', 'recipe': recipe},
+                'experimentalBundlePatch': {'variant': 'candidate', 'recipe': recipe},
+                'pairs': pairs, 'summary': compare_lazy.compare_open.summarize(pairs)}
+        compare_lazy.validate_experiment(data)
+        for mutate in [lambda d: d.pop('baselineBundlePatch'),
+                       lambda d: d['experimentalBundlePatch']['recipe'].update(node='wrong'),
+                       lambda d: d['pairs'][0]['candidate'].update(observedAfterCutoff=False),
+                       lambda d: d['pairs'][0]['candidate'].update(coldModuleParsed=True),
+                       lambda d: d['pairs'][0]['candidate'].update(documentContent='wrong'),
+                       lambda d: d['pairs'].pop()]:
+            broken = copy.deepcopy(data)
+            mutate(broken)
+            with self.assertRaises(ValueError):
+                compare_lazy.validate_experiment(broken)
+
+    def test_lazy_worker_observation_requires_acknowledged_counter_cutoff(self):
+        capture = object.__new__(compare_lazy.VerifiedCapture)
+        with patch.object(compare_lazy.Capture, 'finish', return_value={'cutoffAcknowledged': False}), \
+             patch.object(compare_lazy, 'Page') as page:
+            with self.assertRaisesRegex(ValueError, 'acknowledged cutoff'):
+                capture.finish()
+            page.assert_not_called()
 
     def test_controlled_ipc_cli_keeps_package_identity_separate_from_launch_paths(self):
         editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())

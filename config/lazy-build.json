@@ -1,0 +1,52 @@
+{
+  "sourceCommit": "1a43b6e2eab8456420b4d5c16e95770d3cc258a9",
+  "sourceVersion": "19.74.7",
+  "node": "v24.15.0",
+  "archive": {
+    "id": "editor-worker-source",
+    "version": "1a43b6e2eab8456420b4d5c16e95770d3cc258a9",
+    "archive": "editor-worker-source-1a43.tar.gz",
+    "url": "https://api.github.com/repos/lvce-editor/editor-worker/tarball/1a43b6e2eab8456420b4d5c16e95770d3cc258a9",
+    "sha256": "e02040247ae8d72713c2f61eca8f30c5342ae3fb238b32c33afc932a29819235"
+  },
+  "lockSha256": "c981187342d43f60ef5e3b611490bc911531dc1a796ca080c8a634fe482da493",
+  "sourcePatchSha256": "ec1b550f528e8fb0a2090d504fadc8ae4543bf8ac4d66cd2917ead5544478bb6",
+  "workerPath": "usr/lib/lvce/resources/app/static/cb9d398/packages/editor-worker/dist/editorWorkerMain.js",
+  "officialInputSha256": "12e3c810618d39ece2b4f9b5f0fc2c116e825b2f613ce28d1aceb72ed15b2a44",
+  "outputs": {
+    "baseline": [
+      {
+        "path": "editorWorkerMain.js",
+        "sha256": "dd25f95eefd247fc18cdb3e0ff9afc915b6343a6df0a5ce0fbfa49fd21133fc0",
+        "bytes": 270698
+      }
+    ],
+    "candidate": [
+      {
+        "path": "ColdCommandMap-cMoV4bh0.js",
+        "sha256": "f144e3828e113705c8eba91946f95771dbdb38bceb6ab246ca61b893f915e87c",
+        "bytes": 101344
+      },
+      {
+        "path": "GetColorPickerRange-LwFHT8Px.js",
+        "sha256": "21fc986afc48409e0db9a8996c429907efa991266db8258e2a7f20bcf564a28c",
+        "bytes": 910
+      },
+      {
+        "path": "GetNamedColorRange-LJAB8ndU.js",
+        "sha256": "18ffd35fcca46566194cf2b804303e96c672134b33593b545ceef83810186a4c",
+        "bytes": 484
+      },
+      {
+        "path": "editorWorkerMain-C1ayi2RE.js",
+        "sha256": "5201245a85a89505d5e1d2c9bf3f035c86aed02bdf1ec7b479ff14d9b16f7481",
+        "bytes": 188662
+      },
+      {
+        "path": "editorWorkerMain.js",
+        "sha256": "9c94a6695fe23b0a8282b394adf750906480655eb90a0249ea72a24425030851",
+        "bytes": 40
+      }
+    ]
+  }
+}
