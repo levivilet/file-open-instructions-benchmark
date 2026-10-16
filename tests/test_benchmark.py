@@ -14,6 +14,8 @@ from benchmark import CONTENT, PROTOCOL, RESPONSE_WINDOW_SECONDS, command_for, i
 from counters import parse_counter
 import report
 import benchmark
+import install
+import compare_icon
 
 
 def trial(count=100):
@@ -60,6 +62,44 @@ class BenchmarkTest(unittest.TestCase):
         geany = next(editor for editor in report.EDITORS if editor['id'] == 'geany')
         self.assertEqual(command_for(geany, Path('/tmp/profile'), 1234),
                          ['geany', '--new-instance', '--no-session'])
+
+    def test_minimal_electron_reuses_verified_lvce_runtime(self):
+        lvce = next(e for e in report.EDITORS if e['id'] == 'lvce')
+        electron = next(e for e in report.EDITORS if e['id'] == 'electron')
+        for key in ['url', 'sha256', 'archive', 'binary']:
+            self.assertEqual(lvce[key], electron[key])
+        command = command_for(electron, Path('/tmp/private-home'), 1234)
+        self.assertIn('--remote-debugging-port=1234', command)
+        self.assertIn('--user-data-dir=/tmp/private-home/profile', command)
+        self.assertNotIn('hello.txt', ' '.join(command))
+
+    def test_minimal_electron_rejects_mismatched_runtime_before_replacement(self):
+        electron = next(e for e in report.EDITORS if e['id'] == 'electron')
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'app'
+            def extract(*args, **kwargs):
+                binary = target / electron['binary']
+                binary.parent.mkdir(parents=True)
+                binary.touch()
+                config = binary.parent / 'resources/app/config.json'
+                config.parent.mkdir(parents=True)
+                config.write_text('{"electronVersion":"wrong"}')
+            with patch.object(install.subprocess, 'run', side_effect=extract):
+                with self.assertRaisesRegex(ValueError, 'version differs'):
+                    install.extract(electron, Path('runtime.deb'), target)
+            self.assertTrue((target / electron['binary']).parent.joinpath('resources/app/config.json').exists())
+
+    def test_controlled_icon_experiment_rejects_bundle_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / 'usr/lib/lvce/resources/app/static/test/packages/icon-theme-worker/dist/iconThemeWorkerMain.js'
+            bundle.parent.mkdir(parents=True)
+            bundle.write_text('prefix\n' + compare_icon.ORIGINAL + '\nsuffix')
+            evidence = compare_icon.patch_bundle(root)
+            self.assertNotEqual(evidence['beforeSha256'], evidence['afterSha256'])
+            self.assertEqual(bundle.read_text(), 'prefix\n' + compare_icon.CANDIDATE + '\nsuffix')
+            with self.assertRaisesRegex(ValueError, 'differs'):
+                compare_icon.patch_bundle(root)
 
     def test_zed_launch_is_native_and_uses_isolated_data_without_fixture(self):
         zed = next(editor for editor in report.EDITORS if editor['id'] == 'zed')
@@ -122,7 +162,7 @@ class BenchmarkTest(unittest.TestCase):
             report.validate_result(data, editor['id'])
             invalid = [{'documentLoaded': False}, {'documentContent': ''}, {'cutoffAcknowledged': False},
                        {'focusPid': 999}, {'instructions': 0}, {'valid': False}]
-            if editor['id'] in {'lvce', 'zed'}:
+            if editor['id'] in {'lvce', 'electron', 'zed'}:
                 invalid.append({'documentPath': '/tmp/other/hello.txt'})
             for changes in invalid:
                 broken = copy.deepcopy(data)
@@ -135,7 +175,7 @@ class BenchmarkTest(unittest.TestCase):
     def test_identity_verification_is_specific_to_editor(self):
         for editor in report.EDITORS:
             data = result(editor)
-            if editor['id'] in {'lvce', 'zed'}:
+            if editor['id'] in {'lvce', 'electron', 'zed'}:
                 data['trials'][0]['windowTitle'] = 'Lvce Editor'
                 report.validate_result(data, editor['id'])
                 data['trials'][0]['documentPath'] = '/tmp/wrong/hello.txt'
@@ -165,6 +205,28 @@ class BenchmarkTest(unittest.TestCase):
             path.write_text(json.dumps(broken))
             with self.assertRaises(ValueError):
                 report.load_results(root)
+
+    def test_paired_report_requires_matching_artifacts_and_valid_raw_trials(self):
+        from compare_open import summarize
+        baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+        candidate = next(editor for editor in report.EDITORS if editor['id'] == 'lvce')
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(120), 'candidate': trial(100)} for i in range(3)]
+        data = {'baseline': baseline, 'candidate': candidate, 'protocol': PROTOCOL,
+                'host': {'machine': 'aarch64'}, 'pairs': pairs, 'summary': summarize(pairs)}
+        self.assertEqual(report.validate_comparison(data, PROTOCOL), data)
+        for change in ['artifact', 'trial', 'order', 'summary']:
+            broken = copy.deepcopy(data)
+            if change == 'artifact': broken['candidate']['sha256'] = 'wrong'
+            if change == 'trial': broken['pairs'][0]['candidate']['documentContent'] = 'wrong'
+            if change == 'order': broken['pairs'][0]['order'].reverse()
+            if change == 'summary': broken['summary']['meanPairedInstructionsSaved'] = 0
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                report.validate_comparison(broken, PROTOCOL)
+        with tempfile.TemporaryDirectory() as directory:
+            report.build_report([{'editor': candidate, 'data': result(candidate)}], Path(directory), 'run', 'sha', data)
+            self.assertEqual(json.loads((Path(directory) / 'raw/paired-lvce.json').read_text()), data)
+            self.assertIn('Paired official LVCE releases', (Path(directory) / 'index.html').read_text())
 
     def test_report_keeps_raw_evidence_and_reports_medians(self):
         items = [dict(editor=editor, data=result(editor, counts)) for editor, counts in

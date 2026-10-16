@@ -8,6 +8,7 @@ import statistics
 
 from benchmark import CONTENT, RESPONSE_WINDOW_SECONDS
 from counters import parse_counter
+from compare_open import summarize
 
 ROOT = Path(__file__).resolve().parent.parent
 EDITORS = json.loads((ROOT / 'config/editors.lock.json').read_text())
@@ -35,7 +36,7 @@ def validate_result(data, editor_id):
                 or trial.get('documentLoaded') is not True
                 or trial.get('documentContent') != CONTENT
                 or (editor_id in {'vscode', 'geany'} and 'hello.txt' not in trial.get('windowTitle', ''))
-                or (editor_id in {'lvce', 'zed'} and (not trial.get('fixture', '').endswith('/hello.txt')
+                or (editor_id in {'lvce', 'electron', 'zed'} and (not trial.get('fixture', '').endswith('/hello.txt')
                                              or trial.get('documentPath') != trial['fixture']))
                 or not trial.get('readiness')
                 or not isinstance(trial.get('focusPid'), int)
@@ -78,7 +79,28 @@ def load_results(results_root):
     return results
 
 
-def build_report(results, output, run_url, commit):
+def validate_comparison(data, protocol):
+    baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+    candidate = next(editor for editor in EDITORS if editor['id'] == 'lvce')
+    if (data.get('baseline') != baseline or data.get('candidate') != candidate
+            or data.get('protocol') != protocol or data.get('host', {}).get('machine') != 'aarch64'):
+        raise ValueError('paired comparison identity, protocol or architecture mismatch')
+    pairs = data.get('pairs', [])
+    if len(pairs) < 3:
+        raise ValueError('paired comparison has fewer than three pairs')
+    for index, pair in enumerate(pairs):
+        order = ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline']
+        if pair.get('index') != index or pair.get('order') != order:
+            raise ValueError('paired comparison must preserve all alternating-order pairs')
+    for variant in ['baseline', 'candidate']:
+        validate_result({'editor': data[variant], 'host': data['host'], 'protocol': protocol,
+                         'trials': [pair[variant] for pair in pairs]}, 'lvce')
+    if data.get('summary') != summarize(pairs):
+        raise ValueError('paired summary does not match raw trials')
+    return data
+
+
+def build_report(results, output, run_url, commit, comparison=None):
     output.mkdir(parents=True, exist_ok=True)
     raw_dir = output / 'raw'
     raw_dir.mkdir(exist_ok=True)
@@ -103,7 +125,19 @@ def build_report(results, output, run_url, commit):
         rows.append(f"<tr><th scope='row'>{html.escape(editor['name'])}</th>"
                     f"<td>{html.escape(editor['version'])}</td><td>{median / 1e6:.1f}M</td>"
                     f"<td>{values}</td><td><a href='raw/{html.escape(filename)}' download>Download JSON</a></td></tr>")
-    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries}
+    comparison_html = ''
+    if comparison is not None:
+        (raw_dir / 'paired-lvce.json').write_text(json.dumps(comparison, indent=2) + '\n')
+        summary = comparison['summary']
+        low, high = summary['bootstrap95MeanSavings']
+        comparison_html = (f"<h2>Paired official LVCE releases</h2><p>{html.escape(comparison['baseline']['version'])} to "
+                           f"{html.escape(comparison['candidate']['version'])}: mean instructions saved per open "
+                           f"{summary['meanPairedInstructionsSaved'] / 1e6:.2f}M; bootstrap 95% interval "
+                           f"[{low / 1e6:.2f}M, {high / 1e6:.2f}M]. Positive values favor the candidate. "
+                           f"All {len(comparison['pairs'])} alternating-order pairs are retained. "
+                           "This compares complete releases and includes any intervening changes. "
+                           "<a href='raw/paired-lvce.json'>Download every pair and artifact identity</a>.</p>")
+    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison}
     (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     maximum = max(entry['medianInstructions'] for entry in entries)
     chart_max = max(1, math.ceil(maximum * 1.1))
@@ -128,11 +162,12 @@ th,td{{padding:.7rem;border-bottom:1px solid #d7e0e8;text-align:left}}th{{backgr
 svg{{width:100%;max-width:900px;background:white}}rect{{fill:#2477ae}}text{{font:14px system-ui,sans-serif;fill:#17212b}}
 </style></head><body><main><h1>File-open instructions benchmark</h1>
 <p>Latest complete run: <a href='{safe_run}'>GitHub Actions</a> · commit <code>{safe_commit}</code></p>
-<p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code, Geany and Zed; File &gt; Open File in LVCE), includes the file chooser and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, Zed’s portal file chooser, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
+<p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code, Geany, Zed and minimal Electron; File &gt; Open File in LVCE), includes the file chooser, a fixed 100ms location-entry settling pause after Ctrl+L, and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, Zed’s portal file chooser, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
+<p>Minimal Electron uses LVCE's exact packaged Electron runtime with only its application replaced by a native open dialog and textarea. It uses Ctrl+O; LVCE uses its custom menu with a 150ms menu pause. This reference omits LVCE's editor features and does not isolate the cost of workers or virtual DOM.</p>
 <p>The Linux ARM64 comparison includes all required editors. All {len(entries)} completed with valid measurements.</p>
 <svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
 <table><thead><tr><th>Editor</th><th>Version</th><th>Median instructions to open file</th><th>Trials</th><th>Raw data</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table><p><a href='report.json'>Download complete report</a></p></main></body></html>"""
+<tbody>{''.join(rows)}</tbody></table>{comparison_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
     (output / 'index.html').write_text(page)
 
 
@@ -144,7 +179,11 @@ def main():
     parser.add_argument('--commit', default='')
     args = parser.parse_args()
     results = load_results(args.input)
-    build_report(results, args.output, args.run_url, args.commit)
+    comparison = validate_comparison(json.loads((ROOT / 'results/paired/comparison.json').read_text()),
+                                     results[0]['data']['protocol'])
+    if comparison['host'].get('commit') != args.commit or comparison['host'].get('runUrl') != args.run_url:
+        raise ValueError('paired comparison belongs to a different workflow run')
+    build_report(results, args.output, args.run_url, args.commit, comparison)
     print(f'Built a complete report for {len(results)} editors at {args.output}')
 
 

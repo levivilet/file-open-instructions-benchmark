@@ -1,16 +1,19 @@
 # File-open instructions benchmark
 
 This project compares retired CPU instructions used to open a small text file in
-LVCE Editor, Visual Studio Code, Geany, and Zed on Linux ARM64. The latest complete report is
+LVCE Editor, Visual Studio Code, and Geany on Linux ARM64. The latest complete report is
 published on [GitHub Pages](https://levivilet.github.io/file-open-instructions-benchmark/).
 
 Each result opens a temporary `hello.txt` whose bytes are exactly `hello world`.
 The editor starts with a fresh HOME and XDG profile without the file. After a
 normal main window appears and settles for ten seconds, the controller focuses
-the editor and opens the file through its normal open-file UI: Ctrl+O in VS Code,
-Geany, and Zed, or File > Open File in LVCE. It enters the absolute path with Ctrl+L, using
+the editor and opens the file through its normal open-file UI: Ctrl+O in VS Code
+and Geany, or File > Open File in LVCE. It enters the absolute path with Ctrl+L, using
 10ms per character and a fixed 250ms chooser path-resolution pause, then
 submits the chooser’s Open action. Editor work during input pacing is included.
+A fixed 100ms pause after Ctrl+L lets the GTK location entry realize before typing;
+this pause is inside the measured interval for every editor. An observed failed
+Geany trial lost the leading slash while GTK warned about an unrealized widget.
 The measured window begins immediately before the open command and ends after
 a fixed one-second response window following that click. The editor process tree is
 counted in a dedicated cgroup; the controller, X server, window manager and
@@ -19,8 +22,9 @@ readiness, settling, focus, clipboard/title verification and cleanup are
 excluded. Activity by the editor during the response window is included.
 
 After cutoff, the benchmark requires VS Code’s and Geany’s window titles
-to identify `hello.txt`. LVCE’s selected tab (read through CDP after cutoff)
-and Zed’s Copy Path action must identify the exact fixture path. It copies the selected document to verify its contents exactly match
+to identify `hello.txt` and LVCE’s selected tab to identify the exact fixture path
+(read through CDP only after counting stops, since LVCE keeps a static native window
+title). It copies the selected document to verify its contents exactly match
 `hello world`. Each editor has three fresh-profile trials. The report shows the
 median and publishes raw `perf` output, trial boundaries, protocol, editor
 versions, CPU/host details and run identity. Unsupported, zero or multiplexed
@@ -72,11 +76,38 @@ horizontal-range fallback. Its printable ASCII/tab shortcut ships in
 editor-worker 19.74.5. Unicode and CR/LF retain the existing fallback; the worker
 architecture and virtual DOM remain unchanged.
 
-The final comparison uses official v0.123.11 as the recent baseline. The v0.123.12
+The earlier comparison used official v0.123.11 as the recent baseline. The v0.123.12
 candidate also contains intervening main-area, Git, extension-management,
 TypeScript watcher, title-bar and color-theme changes. Its whole-editor result
 therefore compares complete releases and cannot isolate savings caused by the
 ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
+
+The minimal Electron entry uses the **same Electron 44.7.0 runtime bytes** as
+LVCE v0.123.13: the checksum-verified LVCE Debian package is extracted separately
+and only `resources/app` is replaced with the small app in `electron/`. Installation
+checks LVCE's embedded runtime version first. No npm installation or second Electron
+release is involved. The app reads the selected UTF-8 file asynchronously and displays
+it in a focused textarea, retaining the absolute path for post-cutoff CDP verification.
+Select-all/copy must return the same exact fixture contents as every editor.
+
+Minimal Electron uses its native File menu's Ctrl+O accelerator and the same native
+Electron file chooser. LVCE uses its existing custom File > Open File interaction,
+which includes the documented 150ms menu pause. Both retain the same path pacing
+and one-second response window. This is an application-overhead reference, not an
+isolated measurement of workers: the minimal app has no editor features, worker
+architecture, virtual DOM, syntax handling, tabs or extensions. Differences in menus
+and rendering remain included. The lockfile's Electron entry intentionally points
+to the LVCE archive; its version labels both the runtime and source package.
+
+The report also retains the complete alternating-order official LVCE release
+comparison at `raw/paired-lvce.json`: both pinned artifact identities, every raw
+counter/content check, and a deterministic bootstrap interval for the mean paired
+savings. Report generation rejects mismatched artifacts, protocols, ordering,
+invalid document/counter evidence, summaries that disagree with raw trials, or a
+comparison from a different workflow run. Deployment waits for this comparison.
+A release comparison includes all changes between its tags; the separate
+`paired-icon` diagnostic artifact changes only the icon lookup function in the
+baseline package and is never presented as an official release.
 
 Zed uses its pinned official ARM64 native binary under X11 with Mesa software
 Vulkan (`ZED_ALLOW_EMULATED_GPU=1`). Finish Setup (Ctrl+Enter) runs before counting.
@@ -86,3 +117,9 @@ input driver; their instructions are excluded. The measured editor still
 performs its normal Ctrl+O request and handles the chooser response. After
 cutoff, Ctrl+K P copies the exact document path, then select-all/copy verifies
 the exact contents. No fixture is passed on the launch command line.
+
+The current official-release comparison uses v0.123.12 as baseline and v0.123.13
+as candidate. Besides the icon filename-table optimization, v0.123.13 includes
+titlebarless visibility initialization and editor-worker 19.74.6. Use the separate
+controlled icon experiment to isolate that optimization. The merged editor matrix
+is recorded as protocol v5; do not pool it with earlier protocol runs.

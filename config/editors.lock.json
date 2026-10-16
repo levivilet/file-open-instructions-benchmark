@@ -2,10 +2,10 @@
   {
     "id": "lvce",
     "name": "LVCE Editor",
-    "version": "v0.123.12",
-    "archive": "lvce-v0.123.12_arm64.deb",
-    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.123.12/lvce-v0.123.12_arm64.deb",
-    "sha256": "3fb01838766579144e9979938f9aac98f79e3bbb3ad642f1ad1bf5011dc4146d",
+    "version": "v0.123.13",
+    "archive": "lvce-v0.123.13_arm64.deb",
+    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.123.13/lvce-v0.123.13_arm64.deb",
+    "sha256": "a62a8a8b1b00194d1ba8c2bc7bdfb5e077a30244e6850decfc150644dd9a946a",
     "binary": "usr/lib/lvce/lvce"
   },
   {
@@ -23,6 +23,16 @@
     "version": "2.0-1build2",
     "binary": "geany",
     "package": "geany"
+  },
+  {
+    "id": "electron",
+    "name": "Minimal Electron",
+    "version": "44.7.0 (LVCE v0.123.13 runtime)",
+    "archive": "lvce-v0.123.13_arm64.deb",
+    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.123.13/lvce-v0.123.13_arm64.deb",
+    "sha256": "a62a8a8b1b00194d1ba8c2bc7bdfb5e077a30244e6850decfc150644dd9a946a",
+    "binary": "usr/lib/lvce/lvce",
+    "minimalApp": true
   },
   {
     "id": "zed",

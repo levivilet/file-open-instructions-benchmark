@@ -21,19 +21,19 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = 'hello world'
 RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
-    'version': 3,
+    'version': 5,
     'metric': 'retired hardware instructions (user and kernel)',
-    'action': 'open the prepared hello.txt fixture; VS Code, Geany and Zed use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
+    'action': 'open the prepared hello.txt fixture; VS Code, Geany, Zed and minimal Electron use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
-    'inputPacing': '10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
+    'inputPacing': '100ms for the location entry to realize after Ctrl+L, 10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
     'accounting': 'per-CPU cgroup; includes editor descendants and all work during the open response window',
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
     'profile': 'fresh HOME and XDG directories for every trial',
     'cache': 'warm OS filesystem caches permitted; application profiles always fresh',
     'launcher': 'editor cgroup contains editor process tree; controller, X server, desktop and Zed file-chooser portal stay outside',
     'cutoff': 'perf disable acknowledgement after fixed response window; control latency through acknowledgement is included',
-    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab and Zed Copy Path must identify the exact fixture path, and select-all/copy must return exactly hello world',
+    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab, Zed Copy Path and minimal Electron textarea must identify the exact fixture path, and select-all/copy must return exactly hello world',
     'repeats': 3,
 }
 
@@ -48,7 +48,7 @@ def command_for(editor, home, debug_port):
     args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
             '--user-data-dir', str(home / 'profile'), '--disable-extensions',
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
-    if editor['id'] == 'lvce':
+    if editor['id'] in {'lvce', 'electron'}:
         args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
                 '--user-data-dir=' + str(home / 'profile'), f'--remote-debugging-port={debug_port}']
     return [binary, *args]
@@ -225,6 +225,11 @@ def trial(editor, perf):
                     details['openDialog'] = trigger_open(editor['id'], window_id, details)
                     details['stage'] = 'enter-path'
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+l'], check=True)
+                    # GTK can focus the dialog before its location entry is realized.
+                    # In a failed ARM trial the leading slash was lost, with GTK
+                    # WIDGET_REALIZED_FOR_EVENT warnings. Apply the same measured
+                    # input-settling interval to every editor and paired variant.
+                    time.sleep(.1)
                     details['locationEntryFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
                     details['locationEntryTitle'] = subprocess.check_output(
                         ['xdotool', 'getwindowname', details['locationEntryFocus']], text=True).strip()
@@ -262,10 +267,13 @@ def trial(editor, perf):
                     details['stage'] = 'verify-document'
                     title = window_title(window_id)
                     document_path = None
-                    if editor['id'] == 'lvce':
+                    if editor['id'] in {'lvce', 'electron'}:
                         page = Page(debug_port, timeout=5)
                         try:
-                            tab_path = page.evaluate("document.querySelector('.MainTabSelected')?.getAttribute('title')")
+                            expression = ("document.querySelector('.MainTabSelected')?.getAttribute('title')"
+                                          if editor['id'] == 'lvce' else
+                                          "document.querySelector('textarea')?.dataset.path")
+                            tab_path = page.evaluate(expression)
                         finally:
                             page.close()
                         details['selectedTabPath'] = tab_path
@@ -282,6 +290,8 @@ def trial(editor, perf):
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+c'], check=True)
                     copied = read_clipboard_contents()
                     details.update(windowTitle=title, copiedContent=copied)
+                    if copied != CONTENT:
+                        raise RuntimeError(f'opened document content mismatch: expected {CONTENT!r}, got {copied!r}')
                     result.update(documentLoaded=True, documentContent=copied, windowTitle=title,
                                   documentPath=document_path)
             child.wait(timeout=5)
