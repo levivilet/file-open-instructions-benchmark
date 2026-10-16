@@ -165,3 +165,11 @@ the virtual DOM and all subsequent tab visibility handling unchanged. Forty
 pairs quantify the avoided layout cost before any source or behavior change is
 shipped. Earlier candidate experiments remain separate, including inconclusive
 results.
+
+**Controlled worker minification comparison** tests the V8 parsing cost identified
+by native instruction samples. Both variants use the same verified official
+v0.123.15 archive; one transforms checksum-guarded packaged worker bundles with
+esbuild 0.28.2, preserving function names and module exports. The artifact records
+every input/output hash and size. It retains forty alternating uninstrumented
+pairs with ordinary counting boundaries; no tracing or runtime/security flags
+are changed. This is a diagnostic candidate, not a shipped release comparison.
