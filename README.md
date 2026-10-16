@@ -158,3 +158,10 @@ language. The editor worker still reads and validates the document normally;
 unknown-language first-line detection and legacy rendering keep their existing
 reads. Forty independent alternating pairs use the same pinned v0.123.15
 archive. This candidate is diagnostic until correctness and release acceptance.
+
+**Controlled first-tab comparison** tests suppressing scroll-into-view only for
+the first tab added to an empty group. The isolated main-area-worker patch keeps
+the virtual DOM and all subsequent tab visibility handling unchanged. Forty
+pairs quantify the avoided layout cost before any source or behavior change is
+shipped. Earlier candidate experiments remain separate, including inconclusive
+results.
