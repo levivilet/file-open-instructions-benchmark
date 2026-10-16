@@ -335,6 +335,36 @@ jobs:
           path: results/
           if-no-files-found: error
           retention-days: 90
+  diff-paired:
+    name: Controlled redundant editor diff comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_diff.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-diff
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
   tab-paired:
     name: Controlled first-tab comparison
     needs: accounting

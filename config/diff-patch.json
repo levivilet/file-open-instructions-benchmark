@@ -1,0 +1,20 @@
+{
+  "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/renderer-worker/dist/rendererWorkerMain.js",
+  "beforeSha256": "6e8947c0656e736be292710ccbda90316f42f93ff50bc4ae5ac8a051aad022df",
+  "afterSha256": "5619b65968066e9b29c30eac00c19f55681bec3948e8f25c1383470a4a8766b9",
+  "patches": [
+    {
+      "before": "const diffResult=await actualInvoke(\"Editor.diff2\",state51.id);const commands3=await actualInvoke(\"Editor.render2\",state51.id,diffResult);",
+      "after": "const commands3=await actualInvoke(\"Editor.render2\",state51.id,[]);"
+    },
+    {
+      "before": "const diffResult=await actualInvoke(\"Editor.diff2\",uid);const commands2=await actualInvoke(\"Editor.render2\",uid,diffResult);",
+      "after": "const commands2=await actualInvoke(\"Editor.render2\",uid,[]);"
+    }
+  ],
+  "workerContract": {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/editor-worker/dist/editorWorkerMain.js",
+    "sha256": "12e3c810618d39ece2b4f9b5f0fc2c116e825b2f613ce28d1aceb72ed15b2a44",
+    "render2": "const render2 = (uid, _diffResult) => {\n  const editor = get$8(uid);\n  if (!editor) {\n    return [];\n  }\n  const {\n    newState,\n    oldState\n  } = editor;\n  // Diagnostics can change after the caller calculated its diff in a separate RPC.\n  const diffResult = diff(oldState, newState);\n  set$a(uid, newState, newState);\n  const commands = applyRender(oldState, newState, diffResult);\n  return commands;\n};"
+  }
+}

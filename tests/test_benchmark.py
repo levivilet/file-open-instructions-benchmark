@@ -417,6 +417,35 @@ class BenchmarkTest(unittest.TestCase):
                 capture.__exit__(None, None, None)
                 self.assertEqual((target / 'perf-1234.map').read_text(), 'unrelated existing data')
 
+    def test_diff_comparison_requires_frozen_worker_contract_and_all_pairs(self):
+        import compare_diff
+        editor = json.loads((ROOT / 'config/diff-baseline.json').read_text())
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(200), 'candidate': trial(100)} for i in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'experimentalBundlePatch': compare_diff.SPEC, 'pairs': pairs,
+                'summary': compare_diff.compare_open.summarize(pairs)}
+        compare_diff.validate_experiment(data)
+        for change in ['contract', 'count', 'content', 'summary']:
+            broken = copy.deepcopy(data)
+            if change == 'contract': broken['experimentalBundlePatch']['workerContract']['sha256'] = 'wrong'
+            if change == 'count': broken['pairs'].pop()
+            if change == 'content': broken['pairs'][0]['candidate']['documentContent'] = 'wrong'
+            if change == 'summary': broken['summary']['meanPairedInstructionsSaved'] = 0
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                compare_diff.validate_experiment(broken)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            worker = root / compare_diff.SPEC['workerContract']['path']
+            worker.parent.mkdir(parents=True)
+            worker.write_text('different render contract')
+            target = root / compare_diff.SPEC['path']
+            target.parent.mkdir(parents=True)
+            target.write_text('untouched renderer')
+            with self.assertRaisesRegex(ValueError, 'freshness contract'):
+                compare_diff.patch_bundle(root)
+            self.assertEqual(target.read_text(), 'untouched renderer')
+
     def test_response_comparison_requires_full_frozen_patch_and_all_raw_trials(self):
         import compare_response
         editor = json.loads((ROOT / 'config/response-baseline.json').read_text())
