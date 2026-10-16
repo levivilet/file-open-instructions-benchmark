@@ -387,6 +387,36 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compare_summary.validate_experiment(broken)
 
+    def test_mapped_capture_retains_only_live_maps_and_preserves_existing_paths(self):
+        import profile_mapped
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            maps = root / 'private'
+            maps.mkdir()
+            target = root / 'perf-tmp'
+            target.mkdir()
+            (maps / 'perf-1234.map').write_text('1000 20 JS:~loadContent lvce://-/packages/editor-worker/main.js')
+            (maps / 'perf-9999.map').write_text('exited process')
+            capture = object.__new__(profile_mapped.MappedCapture)
+            capture.map_directory = maps
+            capture.map_links = []
+            capture.maps_ready = False
+            capture.pids = lambda: [1234]
+            with patch.object(profile_mapped.ProfiledCapture, 'snapshot'), \
+                 patch.object(profile_mapped.ProfiledCapture, '__exit__'), \
+                 patch.object(profile_mapped, 'Path', side_effect=lambda value: target if value == '/tmp' else Path(value)):
+                capture.snapshot('after')
+                self.assertTrue(capture.maps_ready)
+                self.assertTrue((target / 'perf-1234.map').is_symlink())
+                self.assertFalse((target / 'perf-9999.map').exists())
+                capture.__exit__(None, None, None)
+                self.assertFalse((target / 'perf-1234.map').exists())
+                (target / 'perf-1234.map').write_text('unrelated existing data')
+                capture.map_links = []
+                with self.assertRaises(FileExistsError): capture.snapshot('after')
+                capture.__exit__(None, None, None)
+                self.assertEqual((target / 'perf-1234.map').read_text(), 'unrelated existing data')
+
     def test_response_comparison_requires_full_frozen_patch_and_all_raw_trials(self):
         import compare_response
         editor = json.loads((ROOT / 'config/response-baseline.json').read_text())
