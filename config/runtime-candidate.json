@@ -1,0 +1,9 @@
+{
+  "archive": "electron-v44.8.0-linux-arm64.zip",
+  "binary": "electron",
+  "id": "electron-runtime",
+  "name": "Electron runtime",
+  "sha256": "502296281cab3c333bd5193e2eaed11c3bb28eabd7a451a49776a3e5a9468f8c",
+  "url": "https://github.com/electron/electron/releases/download/v44.8.0/electron-v44.8.0-linux-arm64.zip",
+  "version": "44.8.0"
+}

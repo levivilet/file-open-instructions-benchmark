@@ -173,3 +173,12 @@ esbuild 0.28.2, preserving function names and module exports. The artifact recor
 every input/output hash and size. It retains forty alternating uninstrumented
 pairs with ordinary counting boundaries; no tracing or runtime/security flags
 are changed. This is a diagnostic candidate, not a shipped release comparison.
+
+**Controlled Electron runtime comparison** isolates a runtime update: both
+variants use identical official LVCE v0.123.15 application files, while one uses
+the checksum-pinned official Electron 44.8.0 ARM64 runtime. It verifies the
+runtime version and unchanged application tree hash, records the replacement
+identity, and retains forty ordinary uninstrumented pairs. Original application
+configuration bytes (including its historical runtime label) remain unchanged;
+the experimental runtime metadata records the actual runtime. These results
+are diagnostic and never presented as an official LVCE release comparison.
