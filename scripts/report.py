@@ -1,6 +1,7 @@
 """Build a static, validated file-open instruction comparison."""
 import argparse
 import html
+import importlib
 import json
 import math
 from pathlib import Path
@@ -100,7 +101,30 @@ def validate_comparison(data, protocol):
     return data
 
 
-def build_report(results, output, run_url, commit, comparison=None, ipc_comparison=None):
+EXPERIMENTS = [
+    ('preferences', 'Preference batching'), ('dialog', 'Chooser configuration'),
+    ('read', 'Renderer content read'), ('tab', 'First-tab scrolling'),
+    ('minify', 'Worker minification'), ('compact', 'Alternative name-preserving minifier'),
+    ('lazy', 'Lazy editor commands'), ('runtime', 'Electron runtime'),
+    ('combined', 'Combined runtime and minification'), ('font', 'Bundled font'),
+    ('render', 'Initial render'), ('plain', 'Plaintext tokenizer'),
+    ('cache', 'V8 cache policy'), ('summary', 'Local Problems summary'),
+    ('response', 'Buffered JavaScript response'), ('diff', 'Redundant diff RPC'),
+]
+
+
+def load_experiments(directory, run_url, commit):
+    results = []
+    for key, label in EXPERIMENTS:
+        data = json.loads((directory / f'paired-{key}/{key}-comparison.json').read_text())
+        importlib.import_module(f'compare_{key}').validate_experiment(data)
+        if data['host'].get('runUrl') != run_url or data['host'].get('commit') != commit:
+            raise ValueError(f'{key}: controlled experiment belongs to a different workflow run')
+        results.append((key, label, data))
+    return results
+
+
+def build_report(results, output, run_url, commit, comparison=None, ipc_comparison=None, experiments=None):
     output.mkdir(parents=True, exist_ok=True)
     raw_dir = output / 'raw'
     raw_dir.mkdir(exist_ok=True)
@@ -151,7 +175,38 @@ def build_report(results, output, run_url, commit, comparison=None, ipc_comparis
                     "the official-release comparison above validates shipped packages. "
                     "<a href='raw/paired-ipc.json'>Download every controlled pair and exact patch</a>. "
                     "<a href='ipc-analysis.html'>Read the process/worker message-flow analysis</a>.</p>")
-    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison, 'controlledIpcComparison': ipc_comparison}
+    experiment_entries, experiment_rows = [], []
+    for key, label, data in experiments or []:
+        filename = f'paired-{key}.json'
+        (raw_dir / filename).write_text(json.dumps(data, indent=2) + '\n')
+        summary = data['summary']
+        low, high = summary['bootstrap95MeanSavings']
+        entry = {'id': key, 'name': label, 'baseline': data['baseline'], 'candidate': data['candidate'],
+                 'summary': summary, 'raw': f'raw/{filename}'}
+        experiment_entries.append(entry)
+        experiment_rows.append(f"<tr><th>{html.escape(label)}</th><td>{html.escape(data['baseline']['version'])}</td>"
+                               f"<td>{summary['meanPairedInstructionsSaved'] / 1e6:.2f}M</td>"
+                               f"<td>[{low / 1e6:.2f}M, {high / 1e6:.2f}M]</td>"
+                               f"<td><a href='raw/{filename}'>Every pair and exact transformation</a></td></tr>")
+    experiments_html = ''
+    if experiment_entries:
+        experiments_html = ("<h2>Controlled diagnostic experiments</h2>"
+                            "<p>Each row retains forty uninstrumented pairs on its own frozen release and configuration. "
+                            "Patched diagnostic bundles are separate from the official release results above. "
+                            "Positive savings favor the candidate; intervals spanning zero are inconclusive. "
+                            "Isolated savings must not be added together or pooled across runs.</p>"
+                            "<table><thead><tr><th>Experiment</th><th>Frozen release</th><th>Mean saved</th>"
+                            "<th>95% interval</th><th>Raw data</th></tr></thead><tbody>" + ''.join(experiment_rows) + '</tbody></table>')
+    target, target_html = None, ''
+    lvce = next((entry for entry in entries if entry['id'] == 'lvce'), None)
+    if lvce:
+        measured = comparison['summary']['candidateMedian'] if comparison else lvce['medianInstructions']
+        target = {'instructions': 1_300_000_000, 'candidateMedian': measured, 'met': measured < 1_300_000_000,
+                  'statistic': 'forty-pair candidate median' if comparison else 'three-trial median'}
+        status = 'met' if target['met'] else 'unmet'
+        target_html = (f"<p class='note'>LVCE target: below 1,300M instructions. The {target['statistic']} is "
+                       f"{measured / 1e6:.2f}M; target {status}.</p>")
+    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison, 'controlledIpcComparison': ipc_comparison, 'controlledExperiments': experiment_entries, 'lvceTarget': target}
     (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     maximum = max(entry['medianInstructions'] for entry in entries)
     chart_max = max(1, math.ceil(maximum * 1.1))
@@ -179,9 +234,9 @@ svg{{width:100%;max-width:900px;background:white}}rect{{fill:#2477ae}}text{{font
 <p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code, Geany, Zed and minimal Electron; File &gt; Open File in LVCE), includes the file chooser, a fixed 100ms location-entry settling pause after Ctrl+L, and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, Zed’s portal file chooser, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
 <p>Minimal Electron uses LVCE's exact packaged Electron runtime with only its application replaced by a native open dialog and textarea. It uses Ctrl+O; LVCE uses its custom menu with a 150ms menu pause. This reference omits LVCE's editor features and does not isolate the cost of workers or virtual DOM.</p>
 <p>The Linux ARM64 comparison includes all required editors. All {len(entries)} completed with valid measurements.</p>
-<svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
+{target_html}<svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
 <table><thead><tr><th>Editor</th><th>Version</th><th>Median instructions to open file</th><th>Trials</th><th>Raw data</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>{comparison_html}{ipc_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
+<tbody>{''.join(rows)}</tbody></table>{comparison_html}{ipc_html}{experiments_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
     (output / 'index.html').write_text(page)
 
 
@@ -191,6 +246,7 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT / '.tmp/pages')
     parser.add_argument('--run-url', default='')
     parser.add_argument('--commit', default='')
+    parser.add_argument('--experiments', type=Path)
     args = parser.parse_args()
     results = load_results(args.input)
     comparison = validate_comparison(json.loads((ROOT / 'results/paired/comparison.json').read_text()),
@@ -202,7 +258,8 @@ def main():
     ipc_comparison = validate_experiment(json.loads((ROOT / 'results/ipc/ipc-comparison.json').read_text()))
     if ipc_comparison['host'].get('commit') != args.commit or ipc_comparison['host'].get('runUrl') != args.run_url:
         raise ValueError('controlled IPC comparison belongs to a different workflow run')
-    build_report(results, args.output, args.run_url, args.commit, comparison, ipc_comparison)
+    experiments = load_experiments(args.experiments, args.run_url, args.commit) if args.experiments else []
+    build_report(results, args.output, args.run_url, args.commit, comparison, ipc_comparison, experiments)
     (args.output / 'ipc-analysis.html').write_text((ROOT / 'docs/ipc-analysis.html').read_text())
     print(f'Built a complete report for {len(results)} editors at {args.output}')
 

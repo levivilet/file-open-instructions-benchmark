@@ -736,6 +736,34 @@ class BenchmarkTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'different workflow'):
                     report.main()
 
+    def test_report_preserves_controlled_pairs_and_explicit_unmet_target(self):
+        import compare_response
+        from compare_open import summarize
+        editor = json.loads((ROOT / 'config/response-baseline.json').read_text())
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(1_500_000_000), 'candidate': trial(1_400_000_000)} for i in range(40)]
+        host = {'machine': 'aarch64', 'commit': 'sha', 'runUrl': 'https://example.test/run'}
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': host,
+                'experimentalBundlePatch': compare_response.SPEC, 'pairs': pairs, 'summary': summarize(pairs)}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'paired-response/response-comparison.json'
+            path.parent.mkdir();path.write_text(json.dumps(data))
+            with patch.object(report, 'EXPERIMENTS', [('response', 'Buffered response')]):
+                experiments = report.load_experiments(root, host['runUrl'], host['commit'])
+                with self.assertRaisesRegex(ValueError, 'different workflow'): report.load_experiments(root, 'wrong', host['commit'])
+                broken = copy.deepcopy(data);broken['pairs'].pop();path.write_text(json.dumps(broken))
+                with self.assertRaises(ValueError): report.load_experiments(root, host['runUrl'], host['commit'])
+            candidate = next(editor for editor in report.EDITORS if editor['id'] == 'lvce')
+            official = dict(data, candidate=candidate)
+            report.build_report([{'editor': candidate, 'data': result(candidate)}], root/'pages', host['runUrl'], 'sha', official, experiments=experiments)
+            output = json.loads((root/'pages/report.json').read_text())
+            self.assertFalse(output['lvceTarget']['met'])
+            self.assertEqual(output['lvceTarget']['candidateMedian'], 1_400_000_000)
+            self.assertEqual(json.loads((root/'pages/raw/paired-response.json').read_text()), data)
+            self.assertEqual(output['controlledExperiments'][0]['raw'], 'raw/paired-response.json')
+            self.assertIn('target unmet', (root/'pages/index.html').read_text())
+
     def test_report_keeps_raw_evidence_and_reports_medians(self):
         items = [dict(editor=editor, data=result(editor, counts)) for editor, counts in
                  [(report.EDITORS[0], [100, 300, 200]), (report.EDITORS[1], [50, 40, 60])]]
