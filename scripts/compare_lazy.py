@@ -21,7 +21,7 @@ import report
 
 ROOT = Path(__file__).resolve().parent.parent
 ORIGINAL = 'rebuilt editor-worker 19.74.7 monolithic bundle; esbuild minified with names preserved'
-CANDIDATE = 'same rebuilt editor-worker; optional command/widget modules loaded on demand; all chunks name-preserving minified'
+CANDIDATE = 'same rebuilt editor-worker; optional implementations load within existing wrappers; widget registration and command ordering preserved'
 
 
 def build_sources():
@@ -51,8 +51,8 @@ def build_sources():
     for variant in ['baseline', 'candidate']:
         if variant == 'candidate':
             git_env = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.parent)}
-            subprocess.run(['git', 'apply', '--check', str(patch)], cwd=source, env=git_env, check=True)
-            subprocess.run(['git', 'apply', str(patch)], cwd=source, env=git_env, check=True)
+            subprocess.run(['git', 'apply', '--unidiff-zero', '--check', str(patch)], cwd=source, env=git_env, check=True)
+            subprocess.run(['git', 'apply', '--unidiff-zero', str(patch)], cwd=source, env=git_env, check=True)
         built = source / '.tmp/dist/dist'
         if built.exists():
             shutil.rmtree(built)
@@ -155,7 +155,7 @@ class VerifiedCapture(Capture):
                 raise ValueError('post-cutoff observation did not find editor worker scripts; see lazy-worker-observation.json')
             result['editorWorkerScripts'] = matched['scripts']
             result['editorWorkerTarget'] = matched['target']
-            result['coldModuleParsed'] = any('/ColdCommandMap-' in name for name in matched['scripts'])
+            result['coldModuleParsed'] = any('/ColdHandlers-' in name for name in matched['scripts'])
             result['observedAfterCutoff'] = True
         finally:
             page.close()
@@ -185,7 +185,8 @@ def validate_experiment(data):
             resources = trial.get('editorWorkerScripts')
             if (trial.get('observedAfterCutoff') is not True or not isinstance(resources, list)
                     or not all(isinstance(name, str) for name in resources)
-                    or trial.get('coldModuleParsed') is not any('/ColdCommandMap-' in name for name in resources)):
+                    or not any('/packages/editor-worker/dist/editorWorkerMain' in name for name in resources)
+                    or trial.get('coldModuleParsed') is not any('/ColdHandlers-' in name for name in resources)):
                 raise ValueError('missing or inconsistent post-cutoff worker module observation')
     for variant in ['baseline', 'candidate']:
         report.validate_result({'editor': editor, 'host': data['host'], 'protocol': data['protocol'],
@@ -224,7 +225,7 @@ def main():
                  'cpuinfo': Path('/proc/cpuinfo').read_text(),
                  'perf': subprocess.check_output([args.perf, '--version'], text=True).strip(),
                  'runUrl': os.environ.get('BENCHMARK_RUN_URL'), 'commit': os.environ.get('BENCHMARK_COMMIT')},
-        'design': 'same official host release with same rebuilt editor19.74.7 on both sides; monolithic versus demand-loaded command topology; all chunks minified identically; alternating fresh profiles; no sampling; module observation only after acknowledged cutoff; diagnostic only',
+        'design': 'same official host release with same rebuilt editor19.74.7 on both sides; monolithic versus demand-loaded command implementations inside existing wrappers; all chunks minified identically; alternating fresh profiles; no sampling; module observation only after acknowledged cutoff; diagnostic only',
         'pairs': [],
     }
     destination = Path('results/lazy-comparison.json')

@@ -309,7 +309,7 @@ class BenchmarkTest(unittest.TestCase):
         editor = json.loads((ROOT / 'config/lazy-baseline.json').read_text())
         recipe = json.loads((ROOT / 'config/lazy-build.json').read_text())
         def observed(count):
-            return dict(trial(count), editorWorkerScripts=[], coldModuleParsed=False, observedAfterCutoff=True)
+            return dict(trial(count), editorWorkerScripts=['lvce://-/test/packages/editor-worker/dist/editorWorkerMain.js'], coldModuleParsed=False, observedAfterCutoff=True)
         pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
                   'baseline': observed(200), 'candidate': observed(100)} for index in range(40)]
         data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
@@ -321,6 +321,7 @@ class BenchmarkTest(unittest.TestCase):
                        lambda d: d['experimentalBundlePatch']['recipe'].update(node='wrong'),
                        lambda d: d['pairs'][0]['candidate'].update(observedAfterCutoff=False),
                        lambda d: d['pairs'][0]['candidate'].update(coldModuleParsed=True),
+                       lambda d: d['pairs'][0]['candidate'].update(editorWorkerScripts=[]),
                        lambda d: d['pairs'][0]['candidate'].update(documentContent='wrong'),
                        lambda d: d['pairs'].pop()]:
             broken = copy.deepcopy(data)
