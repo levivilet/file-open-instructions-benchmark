@@ -21,9 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = 'hello world'
 RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
-    'version': 2,
+    'version': 3,
     'metric': 'retired hardware instructions (user and kernel)',
-    'action': 'open the prepared hello.txt fixture; VS Code and Geany use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
+    'action': 'open the prepared hello.txt fixture; VS Code, Geany and minimal Electron use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
     'inputPacing': '10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
@@ -33,7 +33,7 @@ PROTOCOL = {
     'cache': 'warm OS filesystem caches permitted; application profiles always fresh',
     'launcher': 'editor cgroup contains editor process tree; controller, X server and desktop stay outside',
     'cutoff': 'perf disable acknowledgement after fixed response window; control latency through acknowledgement is included',
-    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab must identify the exact fixture path, and select-all/copy must return exactly hello world',
+    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab and minimal Electron textarea must identify the exact fixture path, and select-all/copy must return exactly hello world',
     'repeats': 3,
 }
 
@@ -45,7 +45,7 @@ def command_for(editor, home, debug_port):
     args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
             '--user-data-dir', str(home / 'profile'), '--disable-extensions',
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
-    if editor['id'] == 'lvce':
+    if editor['id'] in {'lvce', 'electron'}:
         args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
                 '--user-data-dir=' + str(home / 'profile'), f'--remote-debugging-port={debug_port}']
     return [binary, *args]
@@ -253,10 +253,13 @@ def trial(editor, perf):
                     details['stage'] = 'verify-document'
                     title = window_title(window_id)
                     document_path = None
-                    if editor['id'] == 'lvce':
+                    if editor['id'] in {'lvce', 'electron'}:
                         page = Page(debug_port, timeout=5)
                         try:
-                            tab_path = page.evaluate("document.querySelector('.MainTabSelected')?.getAttribute('title')")
+                            expression = ("document.querySelector('.MainTabSelected')?.getAttribute('title')"
+                                          if editor['id'] == 'lvce' else
+                                          "document.querySelector('textarea')?.dataset.path")
+                            tab_path = page.evaluate(expression)
                         finally:
                             page.close()
                         details['selectedTabPath'] = tab_path

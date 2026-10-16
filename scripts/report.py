@@ -35,7 +35,7 @@ def validate_result(data, editor_id):
                 or trial.get('documentLoaded') is not True
                 or trial.get('documentContent') != CONTENT
                 or (editor_id in {'vscode', 'geany'} and 'hello.txt' not in trial.get('windowTitle', ''))
-                or (editor_id == 'lvce' and (not trial.get('fixture', '').endswith('/hello.txt')
+                or (editor_id in {'lvce', 'electron'} and (not trial.get('fixture', '').endswith('/hello.txt')
                                              or trial.get('documentPath') != trial['fixture']))
                 or not trial.get('readiness')
                 or not isinstance(trial.get('focusPid'), int)
@@ -128,7 +128,8 @@ th,td{{padding:.7rem;border-bottom:1px solid #d7e0e8;text-align:left}}th{{backgr
 svg{{width:100%;max-width:900px;background:white}}rect{{fill:#2477ae}}text{{font:14px system-ui,sans-serif;fill:#17212b}}
 </style></head><body><main><h1>File-open instructions benchmark</h1>
 <p>Latest complete run: <a href='{safe_run}'>GitHub Actions</a> · commit <code>{safe_commit}</code></p>
-<p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code and Geany; File &gt; Open File in LVCE), includes the file chooser and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
+<p class='note'>The benchmark opens a prepared <code>hello.txt</code> containing exactly <code>hello world</code>. It starts with a fresh editor profile and waits for the editor window before counting. The measured interval begins before the normal open command (Ctrl+O in VS Code, Geany and minimal Electron; File &gt; Open File in LVCE), includes the file chooser and open request, and ends after a fixed one-second response window. Editor descendants are counted. Fixture preparation, launch, readiness, focus, the external input driver, document verification and cleanup are excluded. Each of three trials uses a fresh profile. The report shows medians, raw counters, host identity and protocol details.</p>
+<p>Minimal Electron uses LVCE's exact packaged Electron runtime with only its application replaced by a native open dialog and textarea. It uses Ctrl+O; LVCE uses its custom menu with a 150ms menu pause. This reference omits LVCE's editor features and does not isolate the cost of workers or virtual DOM.</p>
 <p>The Linux ARM64 comparison includes all required editors. All {len(entries)} completed with valid measurements.</p>
 <svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
 <table><thead><tr><th>Editor</th><th>Version</th><th>Median instructions to open file</th><th>Trials</th><th>Raw data</th></tr></thead>

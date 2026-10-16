@@ -78,3 +78,20 @@ candidate also contains intervening main-area, Git, extension-management,
 TypeScript watcher, title-bar and color-theme changes. Its whole-editor result
 therefore compares complete releases and cannot isolate savings caused by the
 ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
+
+The minimal Electron entry uses the **same Electron 44.7.0 runtime bytes** as
+LVCE v0.123.12: the checksum-verified LVCE Debian package is extracted separately
+and only `resources/app` is replaced with the small app in `electron/`. Installation
+checks LVCE's embedded runtime version first. No npm installation or second Electron
+release is involved. The app reads the selected UTF-8 file asynchronously and displays
+it in a focused textarea, retaining the absolute path for post-cutoff CDP verification.
+Select-all/copy must return the same exact fixture contents as every editor.
+
+Minimal Electron uses its native File menu's Ctrl+O accelerator and the same native
+Electron file chooser. LVCE uses its existing custom File > Open File interaction,
+which includes the documented 150ms menu pause. Both retain the same path pacing
+and one-second response window. This is an application-overhead reference, not an
+isolated measurement of workers: the minimal app has no editor features, worker
+architecture, virtual DOM, syntax handling, tabs or extensions. Differences in menus
+and rendering remain included. The lockfile's Electron entry intentionally points
+to the LVCE archive; its version labels both the runtime and source package.
