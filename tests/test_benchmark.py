@@ -19,6 +19,7 @@ import compare_icon
 import compare_ipc
 import compare_minify
 import compare_runtime
+import compare_combined
 
 
 def trial(count=100):
@@ -179,6 +180,30 @@ class BenchmarkTest(unittest.TestCase):
             mutate(broken)
             with self.assertRaises(ValueError):
                 compare_runtime.validate_experiment(broken)
+
+    def test_combined_comparison_requires_both_guarded_changes_and_raw_pairs(self):
+        editor = json.loads((ROOT / 'config/minify-baseline.json').read_text())
+        pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(200), 'candidate': trial(100)} for index in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'experimentalBundlePatch': {'before': compare_combined.ORIGINAL, 'after': compare_combined.CANDIDATE,
+                    'runtime': {'before': compare_runtime.ORIGINAL, 'after': compare_runtime.CANDIDATE,
+                        'runtime': json.loads((ROOT / 'config/runtime-candidate.json').read_text()),
+                        'applicationSha256': json.loads((ROOT / 'config/runtime-application.json').read_text())['sha256']},
+                    'minification': {'before': compare_minify.ORIGINAL, 'after': compare_minify.CANDIDATE,
+                        'inputs': json.loads((ROOT / 'config/minify-inputs.json').read_text()),
+                        'outputs': json.loads((ROOT / 'config/minify-outputs.json').read_text())}},
+                'pairs': pairs, 'summary': compare_combined.compare_open.summarize(pairs)}
+        compare_combined.validate_experiment(data)
+        for mutate in [lambda d: d['experimentalBundlePatch'].pop('runtime'),
+                       lambda d: d['experimentalBundlePatch'].pop('minification'),
+                       lambda d: d['experimentalBundlePatch']['minification']['outputs'].pop(),
+                       lambda d: d['pairs'][0]['candidate'].update(rawCounter=''),
+                       lambda d: d['pairs'].pop()]:
+            broken = copy.deepcopy(data)
+            mutate(broken)
+            with self.assertRaises(ValueError):
+                compare_combined.validate_experiment(broken)
 
     def test_controlled_ipc_cli_keeps_package_identity_separate_from_launch_paths(self):
         editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
