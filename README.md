@@ -1,14 +1,14 @@
 # File-open instructions benchmark
 
 This project compares retired CPU instructions used to open a small text file in
-LVCE Editor, Visual Studio Code, and Geany on Linux ARM64. The latest complete report is
+LVCE Editor, Visual Studio Code, Geany, and Zed on Linux ARM64. The latest complete report is
 published on [GitHub Pages](https://levivilet.github.io/file-open-instructions-benchmark/).
 
 Each result opens a temporary `hello.txt` whose bytes are exactly `hello world`.
 The editor starts with a fresh HOME and XDG profile without the file. After a
 normal main window appears and settles for ten seconds, the controller focuses
-the editor and opens the file through its normal open-file UI: Ctrl+O in VS Code
-and Geany, or File > Open File in LVCE. It enters the absolute path with Ctrl+L, using
+the editor and opens the file through its normal open-file UI: Ctrl+O in VS Code,
+Geany, and Zed, or File > Open File in LVCE. It enters the absolute path with Ctrl+L, using
 10ms per character and a fixed 250ms chooser path-resolution pause, then
 submits the chooser’s Open action. Editor work during input pacing is included.
 The measured window begins immediately before the open command and ends after
@@ -19,9 +19,8 @@ readiness, settling, focus, clipboard/title verification and cleanup are
 excluded. Activity by the editor during the response window is included.
 
 After cutoff, the benchmark requires VS Code’s and Geany’s window titles
-to identify `hello.txt` and LVCE’s selected tab to identify the exact fixture path
-(read through CDP only after counting stops, since LVCE keeps a static native window
-title). It copies the selected document to verify its contents exactly match
+to identify `hello.txt`. LVCE’s selected tab (read through CDP after cutoff)
+and Zed’s Copy Path action must identify the exact fixture path. It copies the selected document to verify its contents exactly match
 `hello world`. Each editor has three fresh-profile trials. The report shows the
 median and publishes raw `perf` output, trial boundaries, protocol, editor
 versions, CPU/host details and run identity. Unsupported, zero or multiplexed
@@ -78,3 +77,12 @@ candidate also contains intervening main-area, Git, extension-management,
 TypeScript watcher, title-bar and color-theme changes. Its whole-editor result
 therefore compares complete releases and cannot isolate savings caused by the
 ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
+
+Zed uses its pinned official ARM64 native binary under X11 with Mesa software
+Vulkan (`ZED_ALLOW_EMULATED_GPU=1`). Finish Setup (Ctrl+Enter) runs before counting.
+A private D-Bus session and GTK file-chooser portal use a separate temporary
+HOME/XDG profile. They stay outside the editor cgroup, as do the X server and
+input driver; their instructions are excluded. The measured editor still
+performs its normal Ctrl+O request and handles the chooser response. After
+cutoff, Ctrl+K P copies the exact document path, then select-all/copy verifies
+the exact contents. No fixture is passed on the launch command line.
