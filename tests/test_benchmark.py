@@ -132,6 +132,35 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compare_ipc.validate_experiment(broken)
 
+    def test_controlled_ipc_cli_keeps_package_identity_separate_from_launch_paths(self):
+        editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
+        def fake_trial(entry, perf):
+            self.assertTrue(Path(entry['binary']).is_absolute())
+            return dict(trial(100 if 'candidate' in entry['binary'] else 200), command=[entry['binary']])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'config').mkdir()
+            (root / 'config/ipc-baseline.json').write_text(json.dumps(editor))
+            (root / '.tmp/apps').mkdir(parents=True)
+            previous = Path.cwd()
+            try:
+                os.chdir(root)
+                with (patch.object(compare_ipc, 'ROOT', root),
+                      patch.object(sys, 'argv', ['compare_ipc.py', '--editor', 'lvce', '--perf', '/perf']),
+                      patch.object(compare_ipc.platform, 'machine', return_value='aarch64'),
+                      patch.object(install, 'download'), patch.object(install, 'extract'),
+                      patch.object(compare_ipc, 'patch_bundle', return_value={'before': compare_ipc.ORIGINAL, 'after': compare_ipc.CANDIDATE}),
+                      patch.object(benchmark, 'trial', side_effect=fake_trial),
+                      patch.object(compare_ipc.subprocess, 'check_output', return_value='perf test'),
+                      patch('builtins.print')):
+                    compare_ipc.main()
+                data = json.loads((root / 'results/ipc-comparison.json').read_text())
+                self.assertEqual(data['baseline'], editor)
+                self.assertEqual(data['candidate'], editor)
+                self.assertEqual(len(data['pairs']), 40)
+            finally:
+                os.chdir(previous)
+
     def test_zed_launch_is_native_and_uses_isolated_data_without_fixture(self):
         zed = next(editor for editor in report.EDITORS if editor['id'] == 'zed')
         self.assertEqual(command_for(zed, Path('/tmp/profile'), 1234),

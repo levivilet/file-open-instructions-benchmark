@@ -81,7 +81,7 @@ def main():
     patch = patch_bundle(directory)
     candidate = dict(editor, binary=str(directory / editor['binary']))
     output = {
-        'baseline': editor, 'candidate': candidate, 'experimentalBundlePatch': patch,
+        'baseline': editor, 'candidate': editor, 'experimentalBundlePatch': patch,
         'protocol': benchmark.PROTOCOL,
         'host': {'machine': platform.machine(), 'kernel': platform.release(),
                  'cpuinfo': Path('/proc/cpuinfo').read_text(),
