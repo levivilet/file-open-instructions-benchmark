@@ -21,12 +21,12 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = 'hello world'
 RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
-    'version': 3,
+    'version': 4,
     'metric': 'retired hardware instructions (user and kernel)',
     'action': 'open the prepared hello.txt fixture; VS Code, Geany and minimal Electron use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
-    'inputPacing': '10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
+    'inputPacing': '100ms for the location entry to realize after Ctrl+L, 10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
     'accounting': 'per-CPU cgroup; includes editor descendants and all work during the open response window',
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
     'profile': 'fresh HOME and XDG directories for every trial',
@@ -216,6 +216,11 @@ def trial(editor, perf):
                     details['openDialog'] = trigger_open(editor['id'], window_id, details)
                     details['stage'] = 'enter-path'
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+l'], check=True)
+                    # GTK can focus the dialog before its location entry is realized.
+                    # In a failed ARM trial the leading slash was lost, with GTK
+                    # WIDGET_REALIZED_FOR_EVENT warnings. Apply the same measured
+                    # input-settling interval to every editor and paired variant.
+                    time.sleep(.1)
                     details['locationEntryFocus'] = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
                     details['locationEntryTitle'] = subprocess.check_output(
                         ['xdotool', 'getwindowname', details['locationEntryFocus']], text=True).strip()

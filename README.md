@@ -11,6 +11,9 @@ the editor and opens the file through its normal open-file UI: Ctrl+O in VS Code
 and Geany, or File > Open File in LVCE. It enters the absolute path with Ctrl+L, using
 10ms per character and a fixed 250ms chooser path-resolution pause, then
 submits the chooser’s Open action. Editor work during input pacing is included.
+A fixed 100ms pause after Ctrl+L lets the GTK location entry realize before typing;
+this pause is inside the measured interval for every editor. An observed failed
+Geany trial lost the leading slash while GTK warned about an unrealized widget.
 The measured window begins immediately before the open command and ends after
 a fixed one-second response window following that click. The editor process tree is
 counted in a dedicated cgroup; the controller, X server, window manager and
