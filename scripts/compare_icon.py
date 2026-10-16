@@ -59,9 +59,14 @@ def main():
     args = parser.parse_args()
     if args.repeats < 3 or platform.machine() != 'aarch64':
         parser.error('requires at least three pairs on ARM64')
-    editor = next(e for e in json.loads(install.LOCK.read_text()) if e['id'] == 'lvce')
+    editor = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+    archive = ROOT / '.tmp/apps' / editor['archive']
+    install.download(editor, archive)
+    baseline_directory = ROOT / '.tmp/apps/lvce-icon-baseline'
+    install.extract(editor, archive, baseline_directory)
+    baseline = dict(editor, binary=str(baseline_directory / editor['binary']))
     directory = ROOT / '.tmp/apps/lvce-icon-candidate'
-    install.extract(editor, ROOT / '.tmp/apps' / editor['archive'], directory)
+    install.extract(editor, archive, directory)
     patch = patch_bundle(directory)
     candidate = dict(editor, binary=str(directory / editor['binary']))
     output = {
@@ -81,7 +86,7 @@ def main():
         pair = {'index': index, 'order': order}
         output['pairs'].append(pair)
         for variant in order:
-            pair[variant] = benchmark.trial(editor if variant == 'baseline' else candidate, args.perf)
+            pair[variant] = benchmark.trial(baseline if variant == 'baseline' else candidate, args.perf)
             destination.write_text(json.dumps(output, indent=2) + '\n')
             if not pair[variant]['valid']:
                 raise SystemExit(f'invalid {variant} trial; see icon-comparison.json')

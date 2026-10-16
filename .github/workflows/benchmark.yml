@@ -158,31 +158,36 @@ jobs:
   report:
     name: Tests and complete report
     if: ${{ !cancelled() }}
-    needs: [accounting, benchmark]
+    needs: [accounting, benchmark, paired]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - run: python3 -m unittest discover -s tests
       - uses: actions/download-artifact@v5
-        if: needs.benchmark.result == 'success'
+        if: needs.benchmark.result == 'success' && needs.paired.result == 'success'
         with:
           pattern: open-*
           path: results/editors
+      - uses: actions/download-artifact@v5
+        if: needs.paired.result == 'success'
+        with:
+          name: paired-lvce
+          path: results/paired
       - name: Build validated report
-        if: needs.benchmark.result == 'success'
+        if: needs.benchmark.result == 'success' && needs.paired.result == 'success'
         run: python3 scripts/report.py --run-url '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' --commit '${{ github.sha }}'
       - uses: actions/upload-artifact@v5
-        if: needs.benchmark.result == 'success'
+        if: needs.benchmark.result == 'success' && needs.paired.result == 'success'
         with:
           name: measured-report
           path: .tmp/pages
           if-no-files-found: error
       - uses: actions/upload-pages-artifact@v4
-        if: needs.benchmark.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: needs.benchmark.result == 'success' && needs.paired.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: .tmp/pages
       - name: Require full hardware and editor coverage
-        if: needs.accounting.result != 'success' || needs.benchmark.result != 'success'
+        if: needs.accounting.result != 'success' || needs.benchmark.result != 'success' || needs.paired.result != 'success'
         run: exit 1
   deploy:
     name: Deploy Pages

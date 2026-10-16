@@ -189,6 +189,28 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 report.load_results(root)
 
+    def test_paired_report_requires_matching_artifacts_and_valid_raw_trials(self):
+        from compare_open import summarize
+        baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+        candidate = next(editor for editor in report.EDITORS if editor['id'] == 'lvce')
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(120), 'candidate': trial(100)} for i in range(3)]
+        data = {'baseline': baseline, 'candidate': candidate, 'protocol': PROTOCOL,
+                'host': {'machine': 'aarch64'}, 'pairs': pairs, 'summary': summarize(pairs)}
+        self.assertEqual(report.validate_comparison(data, PROTOCOL), data)
+        for change in ['artifact', 'trial', 'order', 'summary']:
+            broken = copy.deepcopy(data)
+            if change == 'artifact': broken['candidate']['sha256'] = 'wrong'
+            if change == 'trial': broken['pairs'][0]['candidate']['documentContent'] = 'wrong'
+            if change == 'order': broken['pairs'][0]['order'].reverse()
+            if change == 'summary': broken['summary']['meanPairedInstructionsSaved'] = 0
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                report.validate_comparison(broken, PROTOCOL)
+        with tempfile.TemporaryDirectory() as directory:
+            report.build_report([{'editor': candidate, 'data': result(candidate)}], Path(directory), 'run', 'sha', data)
+            self.assertEqual(json.loads((Path(directory) / 'raw/paired-lvce.json').read_text()), data)
+            self.assertIn('Paired official LVCE releases', (Path(directory) / 'index.html').read_text())
+
     def test_report_keeps_raw_evidence_and_reports_medians(self):
         items = [dict(editor=editor, data=result(editor, counts)) for editor, counts in
                  [(report.EDITORS[0], [100, 300, 200]), (report.EDITORS[1], [50, 40, 60])]]

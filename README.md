@@ -83,7 +83,7 @@ therefore compares complete releases and cannot isolate savings caused by the
 ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
 
 The minimal Electron entry uses the **same Electron 44.7.0 runtime bytes** as
-LVCE v0.123.12: the checksum-verified LVCE Debian package is extracted separately
+LVCE v0.123.13: the checksum-verified LVCE Debian package is extracted separately
 and only `resources/app` is replaced with the small app in `electron/`. Installation
 checks LVCE's embedded runtime version first. No npm installation or second Electron
 release is involved. The app reads the selected UTF-8 file asynchronously and displays
@@ -98,3 +98,13 @@ isolated measurement of workers: the minimal app has no editor features, worker
 architecture, virtual DOM, syntax handling, tabs or extensions. Differences in menus
 and rendering remain included. The lockfile's Electron entry intentionally points
 to the LVCE archive; its version labels both the runtime and source package.
+
+The report also retains the complete alternating-order official LVCE release
+comparison at `raw/paired-lvce.json`: both pinned artifact identities, every raw
+counter/content check, and a deterministic bootstrap interval for the mean paired
+savings. Report generation rejects mismatched artifacts, protocols, ordering,
+invalid document/counter evidence, summaries that disagree with raw trials, or a
+comparison from a different workflow run. Deployment waits for this comparison.
+A release comparison includes all changes between its tags; the separate
+`paired-icon` diagnostic artifact changes only the icon lookup function in the
+baseline package and is never presented as an official release.
