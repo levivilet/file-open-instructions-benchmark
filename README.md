@@ -151,3 +151,10 @@ existing matrix, comparison, report and deployment gates remain required.
 visible versus the native chooser default, using forty pairs on the same
 v0.123.15 archive. It is diagnostic only: changing the default visibility is a
 user-visible tradeoff, so this experiment alone does not authorize shipping it.
+
+**Controlled renderer read comparison** measures skipping the renderer worker's
+redundant whole-file read for functional editors with an already-known filename
+language. The editor worker still reads and validates the document normally;
+unknown-language first-line detection and legacy rendering keep their existing
+reads. Forty independent alternating pairs use the same pinned v0.123.15
+archive. This candidate is diagnostic until correctness and release acceptance.
