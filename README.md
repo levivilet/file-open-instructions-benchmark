@@ -146,3 +146,8 @@ reads are untouched. **Native-only LVCE profile** samples the same official
 baseline with no Chromium/V8 trace, avoiding the V8 profiling threads present in
 the original diagnostic job. Sampling results remain diagnostic only. All
 existing matrix, comparison, report and deployment gates remain required.
+
+**Controlled chooser comparison** separately quantifies forcing hidden files
+visible versus the native chooser default, using forty pairs on the same
+v0.123.15 archive. It is diagnostic only: changing the default visibility is a
+user-visible tradeoff, so this experiment alone does not authorize shipping it.
