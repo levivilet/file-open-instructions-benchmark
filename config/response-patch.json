@@ -1,0 +1,7 @@
+{
+  "path": "usr/lib/lvce/resources/app/packages/main-process/dist/mainProcessMain.js",
+  "beforeSha256": "21155e301f1563e477753f7df1032d1251671f3f3fec9fc6e9f2cf79889fb971",
+  "afterSha256": "6b9b86e9ea6be32ab21a0b7d75868f5c1addc12f6ac89c72a3f3891a94abe9c6",
+  "before": "const getFileResponse = async (absolutePath, headers) => {\n  // TODO support request method head\n  const blob = await openAsBlob(absolutePath);\n  const response = new Response(blob, {\n    headers,\n    status: 200\n  });\n  return response;\n};",
+  "after": "const getFileResponse = async (absolutePath, headers) => {\n  // TODO support request method head\n  const blob = absolutePath.endsWith('.js') ? await readFile(absolutePath).catch(() => openAsBlob(absolutePath)) : await openAsBlob(absolutePath);\n  const response = new Response(blob, {\n    headers,\n    status: 200\n  });\n  return response;\n};"
+}

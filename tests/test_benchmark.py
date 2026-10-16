@@ -387,6 +387,32 @@ class BenchmarkTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compare_summary.validate_experiment(broken)
 
+    def test_response_comparison_requires_full_frozen_patch_and_all_raw_trials(self):
+        import compare_response
+        editor = json.loads((ROOT / 'config/response-baseline.json').read_text())
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(200), 'candidate': trial(100)} for i in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'experimentalBundlePatch': compare_response.SPEC, 'pairs': pairs,
+                'summary': compare_response.compare_open.summarize(pairs)}
+        compare_response.validate_experiment(data)
+        for change in ['patch', 'count', 'content', 'order', 'summary']:
+            broken = copy.deepcopy(data)
+            if change == 'patch': broken['experimentalBundlePatch']['afterSha256'] = 'wrong'
+            if change == 'count': broken['pairs'].pop()
+            if change == 'content': broken['pairs'][0]['candidate']['documentContent'] = 'wrong'
+            if change == 'order': broken['pairs'][0]['order'].reverse()
+            if change == 'summary': broken['summary']['meanPairedInstructionsSaved'] = 0
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                compare_response.validate_experiment(broken)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / compare_response.SPEC['path']
+            target.parent.mkdir(parents=True)
+            target.write_text('unexpected application')
+            with self.assertRaises(ValueError): compare_response.patch_bundle(root)
+            self.assertEqual(target.read_text(), 'unexpected application')
+
     def test_lazy_worker_observation_requires_acknowledged_counter_cutoff(self):
         capture = object.__new__(compare_lazy.VerifiedCapture)
         with patch.object(compare_lazy.Capture, 'finish', return_value={'cutoffAcknowledged': False}), \
