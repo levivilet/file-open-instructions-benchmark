@@ -24,6 +24,7 @@ import compare_font
 import compare_render
 import compare_plain
 import compare_cache
+import compare_compact
 
 
 def trial(count=100):
@@ -279,6 +280,29 @@ class BenchmarkTest(unittest.TestCase):
             mutate(broken)
             with self.assertRaises(ValueError):
                 compare_cache.validate_experiment(broken)
+
+    def test_minifier_comparison_guards_both_transforms_and_all_raw_pairs(self):
+        editor = json.loads((ROOT / 'config/compact-baseline.json').read_text())
+        inputs = json.loads((ROOT / 'config/minify-inputs.json').read_text())
+        pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(200), 'candidate': trial(100)} for index in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'baselineBundlePatch': {'before': compare_minify.ORIGINAL, 'after': compare_minify.CANDIDATE,
+                    'inputs': inputs, 'outputs': json.loads((ROOT / 'config/minify-outputs.json').read_text())},
+                'experimentalBundlePatch': {'before': compare_compact.ORIGINAL, 'after': compare_compact.CANDIDATE,
+                    'inputs': inputs, 'outputs': json.loads((ROOT / 'config/compact-outputs.json').read_text())},
+                'pairs': pairs, 'summary': compare_compact.compare_open.summarize(pairs)}
+        compare_compact.validate_experiment(data)
+        for mutate in [lambda d: d.pop('baselineBundlePatch'),
+                       lambda d: d['baselineBundlePatch']['outputs'].pop(),
+                       lambda d: d['experimentalBundlePatch']['outputs'][0].update(sha256='0' * 64),
+                       lambda d: d['pairs'][0]['candidate'].update(rawCounter=''),
+                       lambda d: d['pairs'][0]['candidate'].update(documentContent='wrong'),
+                       lambda d: d['pairs'].pop()]:
+            broken = copy.deepcopy(data)
+            mutate(broken)
+            with self.assertRaises(ValueError):
+                compare_compact.validate_experiment(broken)
 
     def test_controlled_ipc_cli_keeps_package_identity_separate_from_launch_paths(self):
         editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
