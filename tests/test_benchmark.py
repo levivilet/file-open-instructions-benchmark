@@ -61,6 +61,23 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(command_for(geany, Path('/tmp/profile'), 1234),
                          ['geany', '--new-instance', '--no-session'])
 
+    def test_zed_launch_is_native_and_uses_isolated_data_without_fixture(self):
+        zed = next(editor for editor in report.EDITORS if editor['id'] == 'zed')
+        self.assertEqual(command_for(zed, Path('/tmp/profile'), 1234),
+                         [str(ROOT / '.tmp/apps/zed' / zed['binary']),
+                          '--user-data-dir', '/tmp/profile/data/zed'])
+
+    def test_copy_path_verification_rejects_stale_clipboard(self):
+        expected = '/tmp/trial/hello.txt'
+        results = [subprocess.CompletedProcess(['xclip'], 0, CONTENT, ''),
+                   subprocess.CompletedProcess(['xclip'], 0, expected, '')]
+        with patch.object(benchmark.subprocess, 'run', side_effect=results), \
+                patch.object(benchmark.time, 'sleep'):
+            self.assertEqual(benchmark.read_clipboard_contents(expected=expected), expected)
+        with patch.object(benchmark.subprocess, 'run', return_value=results[0]):
+            with self.assertRaises(RuntimeError):
+                benchmark.read_clipboard_contents(timeout=0, expected=expected)
+
     def test_clipboard_verification_waits_for_delayed_editor_copy(self):
         results = [subprocess.CompletedProcess(['xclip'], 1, '', 'no selection'),
                    subprocess.CompletedProcess(['xclip'], 0, CONTENT, '')]
@@ -105,7 +122,7 @@ class BenchmarkTest(unittest.TestCase):
             report.validate_result(data, editor['id'])
             invalid = [{'documentLoaded': False}, {'documentContent': ''}, {'cutoffAcknowledged': False},
                        {'focusPid': 999}, {'instructions': 0}, {'valid': False}]
-            if editor['id'] == 'lvce':
+            if editor['id'] in {'lvce', 'zed'}:
                 invalid.append({'documentPath': '/tmp/other/hello.txt'})
             for changes in invalid:
                 broken = copy.deepcopy(data)
@@ -118,7 +135,7 @@ class BenchmarkTest(unittest.TestCase):
     def test_identity_verification_is_specific_to_editor(self):
         for editor in report.EDITORS:
             data = result(editor)
-            if editor['id'] == 'lvce':
+            if editor['id'] in {'lvce', 'zed'}:
                 data['trials'][0]['windowTitle'] = 'Lvce Editor'
                 report.validate_result(data, editor['id'])
                 data['trials'][0]['documentPath'] = '/tmp/wrong/hello.txt'
@@ -136,7 +153,7 @@ class BenchmarkTest(unittest.TestCase):
                 path = root / ('open-' + editor['id'])
                 path.mkdir()
                 (path / 'results.json').write_text(json.dumps(result(editor)))
-            self.assertEqual(len(report.load_results(root)), 3)
+            self.assertEqual(len(report.load_results(root)), len(report.EDITORS))
             path = root / ('open-' + report.EDITORS[0]['id']) / 'results.json'
             path.write_text(json.dumps(result(dict(report.EDITORS[0], version='wrong'))))
             with self.assertRaises(ValueError):

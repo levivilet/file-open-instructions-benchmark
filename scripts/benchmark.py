@@ -21,9 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = 'hello world'
 RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
-    'version': 2,
+    'version': 3,
     'metric': 'retired hardware instructions (user and kernel)',
-    'action': 'open the prepared hello.txt fixture; VS Code and Geany use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
+    'action': 'open the prepared hello.txt fixture; VS Code, Geany and Zed use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
     'inputPacing': '10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
@@ -31,9 +31,9 @@ PROTOCOL = {
     'excluded': 'fixture creation, launch, window readiness, settling, focus, xdotool, clipboard and title verification, cleanup',
     'profile': 'fresh HOME and XDG directories for every trial',
     'cache': 'warm OS filesystem caches permitted; application profiles always fresh',
-    'launcher': 'editor cgroup contains editor process tree; controller, X server and desktop stay outside',
+    'launcher': 'editor cgroup contains editor process tree; controller, X server, desktop and Zed file-chooser portal stay outside',
     'cutoff': 'perf disable acknowledgement after fixed response window; control latency through acknowledgement is included',
-    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab must identify the exact fixture path, and select-all/copy must return exactly hello world',
+    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab and Zed Copy Path must identify the exact fixture path, and select-all/copy must return exactly hello world',
     'repeats': 3,
 }
 
@@ -42,6 +42,9 @@ def command_for(editor, home, debug_port):
     if editor['id'] == 'geany':
         return ['geany', '--new-instance', '--no-session']
     binary = str(ROOT / '.tmp/apps' / editor['id'] / editor['binary'])
+    if editor['id'] == 'zed':
+        # Run the editor directly, avoiding CLI forwarding to another instance.
+        return [binary, '--user-data-dir', str(home / 'data' / 'zed')]
     args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
             '--user-data-dir', str(home / 'profile'), '--disable-extensions',
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
@@ -105,7 +108,7 @@ def window_title(window_id):
     return subprocess.check_output(['xdotool', 'getwindowname', window_id], text=True).strip()
 
 
-def read_clipboard_contents(timeout=5):
+def read_clipboard_contents(timeout=5, expected=CONTENT):
     deadline = time.monotonic() + timeout
     copied = ''
     while True:
@@ -116,10 +119,10 @@ def read_clipboard_contents(timeout=5):
             result = None
         if result is not None and result.returncode == 0:
             copied = result.stdout
-            if copied == CONTENT:
+            if copied == expected:
                 return copied
         if time.monotonic() >= deadline:
-            raise RuntimeError(f'opened document content mismatch: expected {CONTENT!r}, got {copied!r}')
+            raise RuntimeError(f'opened document content mismatch: expected {expected!r}, got {copied!r}')
         time.sleep(.05)
 
 
@@ -163,6 +166,8 @@ def trial(editor, perf):
         env = {**os.environ, 'HOME': str(home), 'LC_ALL': 'C',
                'LIBGL_ALWAYS_SOFTWARE': '1', 'GALLIUM_DRIVER': 'llvmpipe',
                'ELECTRON_OZONE_PLATFORM_HINT': 'x11'}
+        if editor['id'] == 'zed':
+            env.update(WAYLAND_DISPLAY='', ZED_ALLOW_EMULATED_GPU='1')
         for key, name in [('XDG_CONFIG_HOME', 'config'), ('XDG_DATA_HOME', 'data'),
                           ('XDG_CACHE_HOME', 'cache'), ('XDG_STATE_HOME', 'state'),
                           ('XDG_RUNTIME_DIR', 'runtime')]:
@@ -209,6 +214,10 @@ def trial(editor, perf):
                     pids = capture.pids()
                     if focus_pid not in pids:
                         raise RuntimeError(f'focus is outside editor cgroup: window={focus}, pid={focus_pid}')
+                    if editor['id'] == 'zed':
+                        # Fresh-profile Finish Setup; never measured.
+                        subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+Return'], check=True)
+                        time.sleep(1)
                     time.sleep(.5)
                     capture.start()
                     measured_started = time.monotonic()
@@ -229,7 +238,7 @@ def trial(editor, perf):
                         ['xdotool', 'getwindowgeometry', '--shell', details['openDialog']], text=True)
                     dimensions = dict(line.split('=', 1) for line in geometry.splitlines() if '=' in line)
                     details['dialogGeometry'] = dimensions
-                    if editor['id'] == 'vscode':
+                    if editor['id'] in {'vscode', 'zed'}:
                         # Commit GTK's location entry before activating Open.
                         subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Return'], check=True)
                     dialog_alive = subprocess.run(
@@ -263,14 +272,16 @@ def trial(editor, perf):
                         document_path = unquote(urlparse(tab_path).path) if tab_path else None
                         if document_path != str(fixture):
                             raise RuntimeError(f'selected tab does not identify fixture: {tab_path!r}')
+                    elif editor['id'] == 'zed':
+                        subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+k', 'p'], check=True)
+                        document_path = read_clipboard_contents(expected=str(fixture))
+                        details['copiedPath'] = document_path
                     elif fixture.name not in title:
                         raise RuntimeError(f'editor title does not identify opened fixture: {title!r}')
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+a'], check=True)
                     subprocess.run(['xdotool', 'key', '--clearmodifiers', 'ctrl+c'], check=True)
                     copied = read_clipboard_contents()
                     details.update(windowTitle=title, copiedContent=copied)
-                    if copied != CONTENT:
-                        raise RuntimeError(f'opened document content mismatch: expected {CONTENT!r}, got {copied!r}')
                     result.update(documentLoaded=True, documentContent=copied, windowTitle=title,
                                   documentPath=document_path)
             child.wait(timeout=5)
