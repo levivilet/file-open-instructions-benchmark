@@ -15,6 +15,7 @@ from counters import parse_counter
 import report
 import benchmark
 import install
+import compare_icon
 
 
 def trial(count=100):
@@ -87,6 +88,18 @@ class BenchmarkTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'version differs'):
                     install.extract(electron, Path('runtime.deb'), target)
             self.assertTrue((target / electron['binary']).parent.joinpath('resources/app/config.json').exists())
+
+    def test_controlled_icon_experiment_rejects_bundle_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / 'usr/lib/lvce/resources/app/static/test/packages/icon-theme-worker/dist/iconThemeWorkerMain.js'
+            bundle.parent.mkdir(parents=True)
+            bundle.write_text('prefix\n' + compare_icon.ORIGINAL + '\nsuffix')
+            evidence = compare_icon.patch_bundle(root)
+            self.assertNotEqual(evidence['beforeSha256'], evidence['afterSha256'])
+            self.assertEqual(bundle.read_text(), 'prefix\n' + compare_icon.CANDIDATE + '\nsuffix')
+            with self.assertRaisesRegex(ValueError, 'differs'):
+                compare_icon.patch_bundle(root)
 
     def test_clipboard_verification_waits_for_delayed_editor_copy(self):
         results = [subprocess.CompletedProcess(['xclip'], 1, '', 'no selection'),
