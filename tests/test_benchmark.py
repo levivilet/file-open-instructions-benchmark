@@ -22,6 +22,7 @@ import compare_runtime
 import compare_combined
 import compare_font
 import compare_render
+import compare_plain
 
 
 def trial(count=100):
@@ -241,6 +242,24 @@ class BenchmarkTest(unittest.TestCase):
             mutate(broken)
             with self.assertRaises(ValueError):
                 compare_render.validate_experiment(broken)
+
+    def test_plaintext_comparison_requires_lazy_tokenize_edit_and_dispose_guards(self):
+        editor = json.loads((ROOT / 'config/plain-baseline.json').read_text())
+        pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(200), 'candidate': trial(100)} for index in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'experimentalBundlePatch': {'before': compare_plain.ORIGINAL, 'after': compare_plain.CANDIDATE,
+                    'patches': json.loads((ROOT / 'config/plain-patches.json').read_text())},
+                'pairs': pairs, 'summary': compare_plain.compare_open.summarize(pairs)}
+        compare_plain.validate_experiment(data)
+        for mutate in [lambda d: d['experimentalBundlePatch']['patches'][0]['replacements'].pop(),
+                       lambda d: d['experimentalBundlePatch']['patches'][0].update(afterSha256='0' * 64),
+                       lambda d: d['pairs'][0]['candidate'].update(documentContent='wrong'),
+                       lambda d: d['pairs'].pop()]:
+            broken = copy.deepcopy(data)
+            mutate(broken)
+            with self.assertRaises(ValueError):
+                compare_plain.validate_experiment(broken)
 
     def test_controlled_ipc_cli_keeps_package_identity_separate_from_launch_paths(self):
         editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
