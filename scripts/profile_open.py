@@ -32,7 +32,8 @@ class ProfiledCapture(Capture):
         return super().launch(command, *args, **kwargs)
 
     def start(self):
-        self.trace = OpenTrace(self.debug_port)
+        if not os.environ.get('PROFILE_NATIVE_ONLY'):
+            self.trace = OpenTrace(self.debug_port)
         # Capture has already launched/settled the editor. Acknowledge the
         # sampler before enabling the ordinary hardware counter so that no
         # opening work is missed. Stop sampling only after counter cutoff.

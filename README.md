@@ -136,3 +136,13 @@ The controlled patched bundle is diagnostic; the official .13/.14 comparison
 validates the shipped change. Report generation/deployment require both paired
 comparisons and the entire five-editor matrix. No samples or failed trials are
 silently discarded.
+
+The separate **Controlled preference comparison** job tests microtask coalescing
+of the editor worker's legacy global preference reads against two copies of
+checksum-pinned official v0.123.15. All forty alternating pairs are retained and
+validated using the ordinary uninstrumented protocol. This is an exploratory
+bundle patch, not a shipped optimization or report input. Application-scoped
+reads are untouched. **Native-only LVCE profile** samples the same official
+baseline with no Chromium/V8 trace, avoiding the V8 profiling threads present in
+the original diagnostic job. Sampling results remain diagnostic only. All
+existing matrix, comparison, report and deployment gates remain required.
