@@ -337,6 +337,60 @@ class BenchmarkTest(unittest.TestCase):
                 capture.finish()
             page.assert_not_called()
 
+    def test_lazy_observation_survives_unresponsive_worker_but_requires_known_scripts(self):
+        for has_editor in [False, True]:
+            with self.subTest(has_editor=has_editor), tempfile.TemporaryDirectory() as directory:
+                page = MagicMock()
+                page.counter = 0
+                messages = []
+
+                def call(method, **params):
+                    page.counter += 1
+                    if method == 'Target.getTargets':
+                        return {'targetInfos': [{'type': 'worker', 'targetId': target}
+                                                for target in ['idle', 'editor']]}
+                    if method == 'Target.attachToTarget':
+                        return {'sessionId': params['targetId']}
+                    return {}
+
+                def send(raw):
+                    request = json.loads(raw)
+                    if request['sessionId'] == 'idle':
+                        messages.append(TimeoutError('idle worker did not answer'))
+                    else:
+                        if request['method'] == 'Debugger.enable':
+                            url = ('lvce://-/packages/editor-worker/dist/editorWorkerMain.js'
+                                   if has_editor else 'lvce://-/unrelated.js')
+                            messages.append({'sessionId': 'editor', 'method': 'Debugger.scriptParsed',
+                                             'params': {'url': url}})
+                        messages.append({'id': request['id'], 'sessionId': 'editor', 'result': {}})
+
+                def receive():
+                    message = messages.pop(0)
+                    if isinstance(message, Exception):
+                        raise message
+                    return json.dumps(message)
+
+                page.call.side_effect = call
+                page.socket.send.side_effect = send
+                page.socket.recv.side_effect = receive
+                capture = object.__new__(compare_lazy.VerifiedCapture)
+                capture.debug_port = 1234
+                with patch.object(compare_lazy.Capture, 'finish', return_value={'cutoffAcknowledged': True}), \
+                     patch.object(compare_lazy, 'Page', return_value=page), \
+                     patch.object(compare_lazy, 'Path', side_effect=lambda value: Path(directory) / value):
+                    if has_editor:
+                        result = capture.finish()
+                        self.assertTrue(result['observedAfterCutoff'])
+                        self.assertFalse(result['coldModuleParsed'])
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'did not find editor worker'):
+                            capture.finish()
+                evidence = json.loads((Path(directory) / 'results/lazy-worker-observation.json').read_text())
+                self.assertIn('TimeoutError', evidence['observations'][0]['error'])
+                self.assertEqual(len(evidence['observations']), 2)
+                page.close.assert_called_once()
+
     def test_controlled_ipc_cli_keeps_package_identity_separate_from_launch_paths(self):
         editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
         def fake_trial(entry, perf):

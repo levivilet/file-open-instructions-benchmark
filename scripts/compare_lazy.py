@@ -118,11 +118,21 @@ class VerifiedCapture(Capture):
             targets = page.call('Target.getTargets')['targetInfos']
             observations = []
             matched = None
+            destination = Path('results/lazy-worker-observation.json')
+            destination.parent.mkdir(parents=True, exist_ok=True)
+
+            def save_observations():
+                destination.write_text(json.dumps({'targets': targets, 'observations': observations}, indent=2) + '\n')
+
+            save_observations()
             for worker in targets:
                 if worker['type'] != 'worker':
                     continue
-                session = page.call('Target.attachToTarget', targetId=worker['targetId'], flatten=True)['sessionId']
+                session = None
                 scripts = []
+                observation = {'target': worker, 'scripts': scripts}
+                observations.append(observation)
+                save_observations()
 
                 def observe(method, params=None):
                     page.counter += 1
@@ -139,19 +149,25 @@ class VerifiedCapture(Capture):
                             return message.get('result', {})
 
                 try:
+                    session = page.call('Target.attachToTarget', targetId=worker['targetId'], flatten=True)['sessionId']
                     observe('Debugger.enable')
                     observe('Runtime.evaluate', {'expression': '0', 'returnByValue': True})
                     observe('Debugger.disable')
+                except Exception as error:
+                    # A pending or exiting unrelated worker may never answer.
+                    # Its absence cannot establish that our cold module was absent.
+                    observation['error'] = f'{type(error).__name__}: {error}'
                 finally:
-                    page.call('Target.detachFromTarget', sessionId=session)
-                observations.append({'target': worker, 'scripts': scripts})
-                if any('/packages/editor-worker/dist/editorWorkerMain' in url for url in scripts):
-                    matched = observations[-1]
+                    if session is not None:
+                        try:
+                            page.call('Target.detachFromTarget', sessionId=session)
+                        except Exception as error:
+                            observation['detachError'] = f'{type(error).__name__}: {error}'
+                    save_observations()
+                if 'error' not in observation and any('/packages/editor-worker/dist/editorWorkerMain' in url for url in scripts):
+                    matched = observation
                     break
             if matched is None:
-                destination = Path('results/lazy-worker-observation.json')
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.write_text(json.dumps({'targets': targets, 'observations': observations}, indent=2) + '\n')
                 raise ValueError('post-cutoff observation did not find editor worker scripts; see lazy-worker-observation.json')
             result['editorWorkerScripts'] = matched['scripts']
             result['editorWorkerTarget'] = matched['target']
