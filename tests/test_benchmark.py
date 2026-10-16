@@ -16,6 +16,7 @@ import report
 import benchmark
 import install
 import compare_icon
+import compare_ipc
 
 
 def trial(count=100):
@@ -100,6 +101,36 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(bundle.read_text(), 'prefix\n' + compare_icon.CANDIDATE + '\nsuffix')
             with self.assertRaisesRegex(ValueError, 'differs'):
                 compare_icon.patch_bundle(root)
+
+    def test_controlled_ipc_patch_changes_only_the_expected_function_and_rejects_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / 'usr/lib/lvce/resources/app/static/test/packages/renderer-worker/dist/rendererWorkerMain.js'
+            bundle.parent.mkdir(parents=True)
+            bundle.write_text('prefix\n' + compare_ipc.ORIGINAL + '\nsuffix')
+            evidence = compare_ipc.patch_bundle(root)
+            self.assertNotEqual(evidence['beforeSha256'], evidence['afterSha256'])
+            self.assertEqual(bundle.read_text(), 'prefix\n' + compare_ipc.CANDIDATE + '\nsuffix')
+            with self.assertRaisesRegex(ValueError, 'differs'):
+                compare_ipc.patch_bundle(root)
+
+    def test_controlled_ipc_validation_requires_every_pair_and_raw_evidence(self):
+        editor = json.loads((ROOT / 'config/ipc-baseline.json').read_text())
+        pairs = [{'index': index, 'order': ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(200), 'candidate': trial(100)} for index in range(40)]
+        data = {'baseline': editor, 'candidate': editor, 'protocol': PROTOCOL, 'host': {'machine': 'aarch64'},
+                'experimentalBundlePatch': {'before': compare_ipc.ORIGINAL, 'after': compare_ipc.CANDIDATE},
+                'pairs': pairs, 'summary': compare_ipc.compare_open.summarize(pairs)}
+        compare_ipc.validate_experiment(data)
+        for mutate in [lambda d: d['pairs'].pop(),
+                       lambda d: d['pairs'][1].update(order=['baseline', 'candidate']),
+                       lambda d: d['pairs'][0]['candidate'].update(documentContent='wrong'),
+                       lambda d: d['pairs'][0]['candidate'].update(rawCounter=''),
+                       lambda d: d.update(summary={})]:
+            broken = copy.deepcopy(data)
+            mutate(broken)
+            with self.assertRaises(ValueError):
+                compare_ipc.validate_experiment(broken)
 
     def test_zed_launch_is_native_and_uses_isolated_data_without_fixture(self):
         zed = next(editor for editor in report.EDITORS if editor['id'] == 'zed')
