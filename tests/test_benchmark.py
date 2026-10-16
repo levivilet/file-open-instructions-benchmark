@@ -346,6 +346,8 @@ class BenchmarkTest(unittest.TestCase):
 
                 def call(method, **params):
                     page.counter += 1
+                    if method == 'Page.getFrameTree':
+                        return {'frameTree': {'frame': {'id': 'page'}}}
                     if method == 'Target.getTargets':
                         return {'targetInfos': [{'type': 'worker', 'targetId': target}
                                                 for target in ['idle', 'editor']]}
@@ -355,7 +357,11 @@ class BenchmarkTest(unittest.TestCase):
 
                 def send(raw):
                     request = json.loads(raw)
-                    if request['sessionId'] == 'idle':
+                    if request['method'] == 'Target.setAutoAttach':
+                        self.assertEqual(request['sessionId'], 'page')
+                        self.assertFalse(request['params']['waitForDebuggerOnStart'])
+                        messages.append({'id': request['id'], 'sessionId': 'page', 'result': {}})
+                    elif request['sessionId'] == 'idle':
                         messages.append(TimeoutError('idle worker did not answer'))
                     else:
                         if request['method'] == 'Debugger.enable':

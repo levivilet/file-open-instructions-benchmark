@@ -104,6 +104,22 @@ def patch_bundle(directory, variant, outputs):
     return {'variant': variant, 'recipe': recipe}
 
 
+def session_call(page, session, method, params=None, scripts=None):
+    page.counter += 1
+    request_id = page.counter
+    page.socket.send(json.dumps({'id': request_id, 'sessionId': session,
+                                 'method': method, 'params': params or {}}))
+    while True:
+        message = json.loads(page.socket.recv())
+        if (scripts is not None and message.get('sessionId') == session
+                and message.get('method') == 'Debugger.scriptParsed'):
+            scripts.append(message['params']['url'])
+        if message.get('id') == request_id:
+            if 'error' in message or message.get('result', {}).get('exceptionDetails'):
+                raise RuntimeError(message)
+            return message.get('result', {})
+
+
 class VerifiedCapture(Capture):
     def launch(self, command, *args, **kwargs):
         self.debug_port = int(next(arg.split('=', 1)[1] for arg in command if arg.startswith('--remote-debugging-port=')))
@@ -114,7 +130,16 @@ class VerifiedCapture(Capture):
         if not result['cutoffAcknowledged']:
             raise ValueError('worker observation must follow acknowledged cutoff')
         page = Page(self.debug_port, timeout=5)
+        initialization_session = None
         try:
+            # Existing workers expose placeholder targets until their inspector
+            # is initialized. Do this only after the counter has stopped.
+            frame = page.call('Page.getFrameTree')['frameTree']['frame']['id']
+            initialization_session = page.call('Target.attachToTarget', targetId=frame, flatten=True)['sessionId']
+            session_call(page, initialization_session, 'Target.setAutoAttach', {
+                'autoAttach': True, 'filter': [{'type': 'worker'}, {'exclude': True}],
+                'flatten': True, 'waitForDebuggerOnStart': False,
+            })
             targets = page.call('Target.getTargets')['targetInfos']
             observations = []
             matched = None
@@ -134,25 +159,11 @@ class VerifiedCapture(Capture):
                 observations.append(observation)
                 save_observations()
 
-                def observe(method, params=None):
-                    page.counter += 1
-                    request_id = page.counter
-                    page.socket.send(json.dumps({'id': request_id, 'sessionId': session,
-                                                 'method': method, 'params': params or {}}))
-                    while True:
-                        message = json.loads(page.socket.recv())
-                        if message.get('sessionId') == session and message.get('method') == 'Debugger.scriptParsed':
-                            scripts.append(message['params']['url'])
-                        if message.get('id') == request_id:
-                            if 'error' in message or message.get('result', {}).get('exceptionDetails'):
-                                raise RuntimeError(message)
-                            return message.get('result', {})
-
                 try:
                     session = page.call('Target.attachToTarget', targetId=worker['targetId'], flatten=True)['sessionId']
-                    observe('Debugger.enable')
-                    observe('Runtime.evaluate', {'expression': '0', 'returnByValue': True})
-                    observe('Debugger.disable')
+                    session_call(page, session, 'Debugger.enable', scripts=scripts)
+                    session_call(page, session, 'Runtime.evaluate', {'expression': '0', 'returnByValue': True}, scripts)
+                    session_call(page, session, 'Debugger.disable', scripts=scripts)
                 except Exception as error:
                     # A pending or exiting unrelated worker may never answer.
                     # Its absence cannot establish that our cold module was absent.
@@ -174,7 +185,11 @@ class VerifiedCapture(Capture):
             result['coldModuleParsed'] = any('/ColdHandlers-' in name for name in matched['scripts'])
             result['observedAfterCutoff'] = True
         finally:
-            page.close()
+            try:
+                if initialization_session is not None:
+                    page.call('Target.detachFromTarget', sessionId=initialization_session)
+            finally:
+                page.close()
         return result
 
 
