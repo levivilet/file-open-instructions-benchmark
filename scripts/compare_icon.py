@@ -59,7 +59,7 @@ def main():
     args = parser.parse_args()
     if args.repeats < 3 or platform.machine() != 'aarch64':
         parser.error('requires at least three pairs on ARM64')
-    editor = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+    editor = json.loads((ROOT / 'config/icon-baseline.json').read_text())
     archive = ROOT / '.tmp/apps' / editor['archive']
     install.download(editor, archive)
     baseline_directory = ROOT / '.tmp/apps/lvce-icon-baseline'
