@@ -736,6 +736,43 @@ class BenchmarkTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'different workflow'):
                     report.main()
 
+    def test_shipped_render_requires_official_pins_forty_pairs_and_current_run(self):
+        import compare_shipped_render
+        from compare_open import summarize
+        baseline = json.loads(compare_shipped_render.BASELINE.read_text())
+        candidate = next(editor for editor in report.EDITORS if editor['id'] == 'lvce')
+        pairs = [{'index': i, 'order': ['baseline', 'candidate'] if i % 2 == 0 else ['candidate', 'baseline'],
+                  'baseline': trial(1_420_000_000), 'candidate': trial(1_390_000_000)} for i in range(40)]
+        data = {'baseline': baseline, 'candidate': candidate, 'protocol': PROTOCOL,
+                'host': {'machine': 'aarch64', 'runUrl': 'run', 'commit': 'sha'},
+                'pairs': pairs, 'summary': summarize(pairs)}
+        self.assertEqual(compare_shipped_render.validate_experiment(data, 'run', 'sha'), data)
+        for change in ['baseline', 'pairs', 'content', 'summary', 'run', 'commit', 'patch']:
+            broken = copy.deepcopy(data)
+            if change == 'baseline': broken['baseline']['sha256'] = 'wrong'
+            if change == 'pairs': broken['pairs'].pop()
+            if change == 'content': broken['pairs'][0]['candidate']['documentContent'] = 'wrong'
+            if change == 'summary': broken['summary']['candidateMedian'] = 1
+            if change == 'run': broken['host']['runUrl'] = 'old run'
+            if change == 'commit': broken['host']['commit'] = 'old sha'
+            if change == 'patch': broken['experimentalBundlePatch'] = {}
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                compare_shipped_render.validate_experiment(broken, 'run', 'sha')
+        overall_pairs = copy.deepcopy(pairs)
+        for pair in overall_pairs: pair['candidate'] = trial(1_400_000_000)
+        overall = dict(data, baseline=json.loads((ROOT/'config/lvce-baseline.json').read_text()),
+                       pairs=overall_pairs, summary=summarize(overall_pairs))
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            report.build_report([{'editor': candidate, 'data': result(candidate)}], output, 'run', 'sha',
+                                overall, shipped_comparison=data)
+            published = json.loads((output/'report.json').read_text())
+            self.assertEqual(published['shippedRenderComparison'], data)
+            self.assertEqual(json.loads((output/'raw/paired-shipped-render.json').read_text()), data)
+            self.assertEqual(published['lvceTarget']['candidateMedian'], 1_400_000_000)
+            self.assertFalse(published['lvceTarget']['met'])
+            self.assertIn('Official selection-restoration comparison', (output/'index.html').read_text())
+
     def test_report_preserves_controlled_pairs_and_explicit_unmet_target(self):
         import compare_response
         from compare_open import summarize

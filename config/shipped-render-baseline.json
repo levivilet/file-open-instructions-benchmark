@@ -1,0 +1,9 @@
+{
+  "id": "lvce",
+  "name": "LVCE Editor",
+  "version": "v0.123.17",
+  "archive": "lvce-v0.123.17_arm64.deb",
+  "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.123.17/lvce-v0.123.17_arm64.deb",
+  "sha256": "470433c16c8b0849e6f7a0bfa86c133cfd892949328f36f46f59cd56653009ee",
+  "binary": "usr/lib/lvce/lvce"
+}
