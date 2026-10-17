@@ -185,10 +185,591 @@ jobs:
           path: results/
           if-no-files-found: error
           retention-days: 90
+  preferences-paired:
+    name: Controlled preference comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_preferences.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-preferences
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  dialog-paired:
+    name: Controlled chooser comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_dialog.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-dialog
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  read-paired:
+    name: Controlled renderer read comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_read.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-read
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  summary-paired:
+    name: Controlled local Problems summary comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_summary.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-summary
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  response-paired:
+    name: Controlled buffered JavaScript response comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_response.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-response
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  diff-paired:
+    name: Controlled redundant editor diff comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_diff.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-diff
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  tab-paired:
+    name: Controlled first-tab comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_tab.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-tab
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  minify-paired:
+    name: Controlled worker minification comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_minify.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-minify
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  compact-paired:
+    name: Controlled name-preserving minifier comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_compact.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-compact
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  lazy-paired:
+    name: Controlled lazy-command comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.15.0'
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Rebuild both pinned worker variants
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'scripts')
+          import compare_lazy
+          compare_lazy.build_sources()
+          PY
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_lazy.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-lazy
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  runtime-paired:
+    name: Controlled Electron runtime comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_runtime.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-runtime
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  combined-paired:
+    name: Controlled combined optimization comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_combined.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-combined
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  font-paired:
+    name: Controlled bundled-font comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_font.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-font
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  render-paired:
+    name: Controlled initial-render comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_render.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-render
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  plain-paired:
+    name: Controlled plaintext worker comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_plain.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-plain
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  cache-paired:
+    name: Controlled V8 cache policy comparison
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Measure forty controlled alternating-order pairs
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/compare_cache.py 40
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: paired-cache
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  native-profile:
+    name: Native-only LVCE profile
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Sample three diagnostic file opens
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/profile_native.py
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: native-profile-lvce
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  mapped-native-profile:
+    name: Mapped native LVCE profile
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "lvce"
+      - name: Sample three diagnostic file opens
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "lvce" "$PERF" scripts/profile_mapped.py
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: mapped-native-profile-lvce
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
+  native-reference-profile:
+    name: Native-only Electron reference profile
+    needs: accounting
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop, clipboard and perf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-tools-generic python3 python3-websocket curl xz-utils xvfb xauth xdotool x11-utils x11-apps xclip openbox geany=2.0-1build2 \
+            libgtk-3-0 libnss3 libgbm1 libxss1 libxtst6 libxkbcommon-x11-0 libxkbfile1 libsecret-1-0 \
+            mesa-utils mesa-vulkan-drivers libvulkan1 libasound2t64
+          sudo sysctl kernel.perf_event_paranoid=-1
+      - name: Install pinned ARM editor
+        run: python3 scripts/install.py --editors "electron"
+      - name: Sample three diagnostic file opens
+        env:
+          BENCHMARK_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BENCHMARK_COMMIT: ${{ github.sha }}
+        run: |
+          PERF=$(find -L /usr/lib/linux-tools -name perf -type f | sort | tail -n 1)
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/run.sh "electron" "$PERF" scripts/profile_native.py
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: native-profile-electron
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
   report:
     name: Tests and complete report
     if: ${{ !cancelled() }}
-    needs: [accounting, benchmark, paired, ipc-paired]
+    needs: [accounting, benchmark, paired, ipc-paired, preferences-paired, dialog-paired, read-paired, tab-paired, minify-paired, compact-paired, lazy-paired, runtime-paired, combined-paired, font-paired, render-paired, plain-paired, cache-paired, summary-paired, response-paired, diff-paired]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -208,9 +789,13 @@ jobs:
         with:
           name: paired-ipc
           path: results/ipc
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: paired-*
+          path: results/experiments
       - name: Build validated report
         if: needs.benchmark.result == 'success' && needs.paired.result == 'success' && needs.ipc-paired.result == 'success'
-        run: python3 scripts/report.py --run-url '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' --commit '${{ github.sha }}'
+        run: python3 scripts/report.py --run-url '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' --commit '${{ github.sha }}' --experiments results/experiments
       - uses: actions/upload-artifact@v5
         if: needs.benchmark.result == 'success' && needs.paired.result == 'success' && needs.ipc-paired.result == 'success'
         with:

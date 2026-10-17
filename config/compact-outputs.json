@@ -1,0 +1,352 @@
+[
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/about-view-worker/dist/aboutWorkerMain.js",
+    "sha256": "ab549b32c6e8b578f840419e93ff512e72f97daea8f2fdaf7319832e9685c02a",
+    "bytes": 26537
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/accounts-view/dist/accountsWorkerMain.js",
+    "sha256": "810d0f10f5e94a020e7c3b720a688cf3c01f380855d6ac55d1052150d63d9abb",
+    "bytes": 50891
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/activity-bar-worker/dist/activityBarWorkerMain.js",
+    "sha256": "fb17c51f958cbc046e4f17d0a6cb0acf3620ef9d8cb19e1efece489c2c7d863f",
+    "bytes": 49622
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/auth-worker/dist/authWorkerMain.js",
+    "sha256": "be56af10dcfdbdb8631e1cbc42e1cff115bae654c0f0f751a4c933cd5fc73ffb",
+    "bytes": 60367
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-coordinator-worker/dist/chatCoordinatorWorkerMain.js",
+    "sha256": "d62a7fb0b6916f4a953093259573a9fa041a923fee4f9715a0526ee75f11ef13",
+    "bytes": 43533
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-debug-view/dist/chatDebugViewWorkerMain.js",
+    "sha256": "e377b545d2a21286fefaca14ad38eb5e7530aea87af23393f40426420e4bcd41",
+    "bytes": 128236
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-math-worker/dist/chatMathWorkerMain.js",
+    "sha256": "9a107f858d585963e5f25cc8fee041b01b1e7bb12e60a6864044a8ca1c32fd78",
+    "bytes": 291982
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-message-parsing-worker/dist/chatMessageParsingWorkerMain.js",
+    "sha256": "4a638374b1c41cb548f8b9ded4643b3123a57e4b39cf0f967cdbb28b5002062c",
+    "bytes": 29210
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-network-worker/dist/chatNetworkWorkerMain.js",
+    "sha256": "8cdc46f746888102ae9d327a5d27194982f1a57f0817420d8687c70fe6c8e66b",
+    "bytes": 13349
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-storage-worker/dist/chatStorageWorkerMain.js",
+    "sha256": "65217c2de6d685429130439b859e4d2e41945d3ff5b2ad5c96d3d1a7b4b98cd1",
+    "bytes": 40956
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-tool-worker/dist/chatToolWorkerMain.js",
+    "sha256": "62b1848a6d28dbbf5c941a02e09d1e842839da6421d52eccb274056076225c25",
+    "bytes": 49317
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-view/dist/chatViewWorkerMain.js",
+    "sha256": "80ad3d7c1ac8071a463e4338e553053ac8d25599a846dfe8ca81c595ae136c73",
+    "bytes": 183660
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/chat-view-model/dist/chatViewModelWorkerMain.js",
+    "sha256": "f7dd3ff4a9a7845d3a75fe3d1b6f101e8ebd93a473c61ae9a3d4f060ad640957",
+    "bytes": 44309
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/clipboard-worker/dist/clipBoardWorkerMain.js",
+    "sha256": "86bd92d38770e555ab0faadca41d90df2e5311947e1a01e4ea3cafa456ec50ff",
+    "bytes": 15902
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/color-picker-worker/dist/colorPickerWorkerMain.js",
+    "sha256": "82a884ec6e9da1a62b54dbcc8cc5c86bd1a27c4cea9c9610452f71e2e102e83a",
+    "bytes": 23518
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/completion-worker/dist/completionWorkerMain.js",
+    "sha256": "8c66c291cb8954030298452662899bfcd0cb8ab83099b51e8b1d6b8814abda1c",
+    "bytes": 32865
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/component-state-worker/dist/componentStateWorkerMain.js",
+    "sha256": "695ed2ba708e767a1974cbce53bbafc0729bfb5190d736b24bc0903bfea827a0",
+    "bytes": 28680
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/cookie-import-view/dist/cookieImportViewWorkerMain.js",
+    "sha256": "0ea5b2e571cd44516b95ae99343d85e30190439bc1d81d4a215655a102769f99",
+    "bytes": 20830
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/debug-worker/dist/debugWorkerMain.js",
+    "sha256": "60a96be8f1dd4edfe0157a58b999ce89b67f3efd0e3c6e492eeaf5707da86963",
+    "bytes": 71722
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/dialog-worker/dist/dialogWorkerMain.js",
+    "sha256": "d3a8ee16894737f4199735024208be96c5a9d437c8ac32d62b321307590b16d7",
+    "bytes": 26757
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/diff-view/dist/diffViewWorkerMain.js",
+    "sha256": "6c4599ab43077c7de9ddca3c3bbc1be8a7bd07cda3da351db5a0ed6782526d57",
+    "bytes": 80671
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/diff-worker/dist/diffWorkerMain.js",
+    "sha256": "870cf0a4540a4efb7fa8e25899596ba23d77b6b0dcaee5ddeaf01b8247242e22",
+    "bytes": 14943
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/drag-and-drop-worker/dist/dragAndDropWorkerMain.js",
+    "sha256": "079ffeea3611b35df3760f3c48f3d3f5c631fec834eded77c1874cadf73cf1c8",
+    "bytes": 16162
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/editor-worker/dist/editorWorkerMain.js",
+    "sha256": "5d600b98d5946f9a4723d00455c3158273bb822e5d43486ec226313994cffe1b",
+    "bytes": 271299
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/embeds-worker/dist/embedsWorkerMain.js",
+    "sha256": "ddf54c3a59a26acba2effefd36b0eb5631500b8eb50812cf84fa32cb1b730527",
+    "bytes": 17797
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/error-worker/dist/errorWorkerMain.js",
+    "sha256": "040426a69c0a1d6ae809af3dbedf6aed8d9959efecf9902df1a5876568cef6c2",
+    "bytes": 423405
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/explorer-worker/dist/explorerViewWorkerMain.js",
+    "sha256": "4924a32b0e2ef43467170111cb8b88e822f091f5abd0f0ef5e1ba056b852c159",
+    "bytes": 102662
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/extension-detail-view-worker/dist/extensionDetailViewWorkerMain.js",
+    "sha256": "973990725c9b1d74bed75a4fd0d139253a72eb4609ca775c53798adec596f3ba",
+    "bytes": 102167
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/extension-host-sub-worker/dist/extensionHostSubWorkerMain.js",
+    "sha256": "710af44511e453052540556a6fd598b6fc3337e06a1e20c0d74e6ed09a2d9cba",
+    "bytes": 12575
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/extension-management-worker/dist/extensionManagementWorkerMain.js",
+    "sha256": "b265687dad17c4dcd6acce944636200082577aa80043b1c35dc4863a2ce6ab09",
+    "bytes": 115195
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/extension-search-view-worker/dist/extensionSearchViewWorkerMain.js",
+    "sha256": "4a89c5307a71c496a0c452f008e7cdd9947b9d17c9aa51ad507669d9909dea5d",
+    "bytes": 65384
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/file-search-worker/dist/fileSearchWorkerMain.js",
+    "sha256": "a7db0c08438f1aab6e3256e4ac4391c7c1f6f135e8834861c0896c3f9a201085",
+    "bytes": 14496
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/file-system-worker/dist/fileSystemWorkerMain.js",
+    "sha256": "322f0e4bc23d58d9498e5b92137a842bcb4a29f5cba6f01b65086d63fbc65df6",
+    "bytes": 33213
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/find-widget-worker/dist/findWidgetWorkerMain.js",
+    "sha256": "54b685c7c66b7f8db14c0e1f0304a2100e4df31562d1e8e5ed55a36f7e2e6995",
+    "bytes": 42135
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/hover-worker/dist/hoverWorkerMain.js",
+    "sha256": "54eed0b1c47f67b111246264f8d4f390f3fd9bf3440d01ea10c14aed5fc505f3",
+    "bytes": 24282
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/icon-theme-worker/dist/iconThemeWorkerMain.js",
+    "sha256": "b59cc542f12c0fe93bd062df983c6ebd7e727182f5397654f474a475cd09b59d",
+    "bytes": 21254
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/iframe-inspector/dist/iframeInspectorWorkerMain.js",
+    "sha256": "046d4e2d1ccd6b0fc8529443d40d4e0d91cb0a5817118e6a1f50b51207065319",
+    "bytes": 28963
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/iframe-worker/dist/iframeWorkerMain.js",
+    "sha256": "22f42ea865fde78d0df49d908bc597683b707ed6271dae51c25aad54903301ef",
+    "bytes": 29323
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/keybindings-view-worker/dist/keyBindingsViewWorkerMain.js",
+    "sha256": "a355b6ed8c650b414e288629ab28af059aa64c9a513f2156a135d2ce2671d615",
+    "bytes": 54005
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/main-area-worker/dist/mainAreaWorkerMain.js",
+    "sha256": "fa4d147859808d4706ec83c76611b64efd05cd59ca4a32b245c30b7daea05427",
+    "bytes": 122150
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/markdown-worker/dist/markdownWorkerMain.js",
+    "sha256": "2a5128ea782df211e184051ce2c6c3668311dba8f8b16a6adf731bb541fe7d10",
+    "bytes": 61691
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/menu-worker/dist/menuWorkerMain.js",
+    "sha256": "b83261cf1b9969aee8c192d734c4cfbe90c4c74a1f14f9009cda2980066060f1",
+    "bytes": 34184
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/opener-worker/dist/openerWorkerMain.js",
+    "sha256": "1d187d887845a29706e95677657a5c6f990034c17bebadf97290ed87ae1f1628",
+    "bytes": 14344
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/output-view/dist/outputViewWorkerMain.js",
+    "sha256": "886c73eb5752f4462e862b0faf9fde1e037392eb2787c8b96b37ba6b86d72955",
+    "bytes": 36347
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/panel-worker/dist/panelWorkerMain.js",
+    "sha256": "01cf105d8350036636f673aaafbfe022a281e37d457138fbe6edcf4c4befd38a",
+    "bytes": 29997
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/ports-view/dist/portsViewWorkerMain.js",
+    "sha256": "da201aa6a5910ec9f11a3873afde9ab61be89d951fad95421a926b5bb1e08760",
+    "bytes": 33486
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/preview-sandbox-worker/dist/previewSandBoxWorkerMain.js",
+    "sha256": "85007376eea01fd2dbb8c87d8d10cefa6aeb824d155b94b2c7bacdfd20f0034e",
+    "bytes": 1141229
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/preview-worker/dist/previewWorkerMain.js",
+    "sha256": "00c103652ed3f130964dfabe825c8d256b8d6a597cb11f25b9f4a03f5b2231ff",
+    "bytes": 58374
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/problems-view/dist/problemsViewWorkerMain.js",
+    "sha256": "63daef15a336dcf996b63b5c19c64754cc150e0df23808ca203c4004133b3ac5",
+    "bytes": 47650
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/quick-pick-worker/dist/quickPickWorkerMain.js",
+    "sha256": "219b02cefda288a866b1dcd462f6fc0b7549be42745da7c25cb81bff7a18044d",
+    "bytes": 62932
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/references-view/dist/referencesViewWorkerMain.js",
+    "sha256": "a73a7138463c897e8b0c21c9dd3543236188e9777ce83736d97c9ff7ecb855af",
+    "bytes": 30584
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/rename-worker/dist/renameWorkerMain.js",
+    "sha256": "52ec6875a543010400977406ffc5eac7390ca2b5e81f3854b37e4fecb09758b3",
+    "bytes": 23022
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/renderer-process/dist/sessionReplayWorkerMain.js",
+    "sha256": "40459e91b03513c39b18eb2fbca2d9536679b222e43d2288f9e45168ecd1ef4e",
+    "bytes": 249792
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/renderer-worker/dist/rendererWorkerMain.js",
+    "sha256": "023290499e204b6df0383bab29e8f66a29e0e1f61c8a429c445aa742674a9799",
+    "bytes": 956838
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/secrets-view/dist/secretsViewWorkerMain.js",
+    "sha256": "793e6185baa26089af8aa27e5c549dff00aeb90a843d5a556c4ea3d5e30fb4bc",
+    "bytes": 25537
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/settings-view/dist/settingsViewWorkerMain.js",
+    "sha256": "0564987bac4c29ad12dac89c2c5fefe838689e9924071b2acb4a221efcae15ff",
+    "bytes": 56333
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/settings-worker/dist/settingsWorkerMain.js",
+    "sha256": "c3e9d80bf49098a7b563b0b2927dfffd1e9709b75bfa572fc37e6340dbbe7bb2",
+    "bytes": 25050
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/simple-browser-view/dist/simpleBrowserViewWorkerMain.js",
+    "sha256": "02e7e1197b48eac6dc8aeb4375255679527bca2943b631990f27cabae56734c2",
+    "bytes": 23742
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/source-action-worker/dist/sourceActionWorkerMain.js",
+    "sha256": "a188e96c387446eb6e943df5c4b50879ef9d808065601b917a0bbdd4e3064527",
+    "bytes": 25466
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/source-control-worker/dist/sourceControlWorkerMain.js",
+    "sha256": "5fc638389444fa36f5ae6ed204bef5db5a8890d1266c76ab4d0eec74d9bf3c4c",
+    "bytes": 67587
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/status-bar-worker/dist/statusBarWorkerMain.js",
+    "sha256": "9a44b2ff836d5e40b45ae997361e7be7d40f72ab18b6211746ab701845d109a2",
+    "bytes": 39086
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/syntax-highlighting-worker/dist/syntaxHighlightingWorkerMain.js",
+    "sha256": "aaa64d3f901d92bde309fd21f2e6d9dd3c5fb082199b7deeb538c8dc38e7bfd3",
+    "bytes": 16419
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/task-worker/dist/taskWorkerMain.js",
+    "sha256": "bc705fae6cfe8d008b01a24f1a7eda52bedfc50d20dd1261e5398c3cf9e3b780",
+    "bytes": 14211
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/terminal-worker/dist/terminalWorkerMain.js",
+    "sha256": "118625e66ea51764da9ed6fd96f709acb4815f8397d7efc85df14a146da526d4",
+    "bytes": 24252
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/test-worker/dist/testWorkerMain.js",
+    "sha256": "f93952c91b339d79f3cc84e84987f632a20b61ab031d48b5e0dbc7257f4e3dee",
+    "bytes": 124929
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/text-measurement-worker/dist/textMeasurementWorkerMain.js",
+    "sha256": "222ffaf9edb3767d934471c2df76c6c12b88365f3fd4affaed7c1f2611e0dea0",
+    "bytes": 17735
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/text-search-worker/dist/textSearchWorkerMain.js",
+    "sha256": "643281a59f381709fc8f7e25eacbf3515b61b9b55541de487b8e2df01b402056",
+    "bytes": 20501
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/title-bar-worker/dist/titleBarWorkerMain.js",
+    "sha256": "7ce58b32579a0bbee289999eb13a90fd75a30b189e617e8d64231497cdcdc81d",
+    "bytes": 64710
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/update-worker/dist/cacheWorkerMain.js",
+    "sha256": "c0b90de2a23fc521b3a9a04d908e9629f3b3a210f2a1acae11ee2c3f7ee530a5",
+    "bytes": 11501
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/update-worker/dist/updateWorkerMain.js",
+    "sha256": "eff8fe8a14007dc5b34b1666039fceed92e7ef55f08d8062df3784fa6ab2272a",
+    "bytes": 21467
+  }
+]

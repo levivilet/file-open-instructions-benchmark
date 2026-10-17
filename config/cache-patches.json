@@ -1,0 +1,13 @@
+[
+  {
+    "path": "usr/lib/lvce/resources/app/packages/shared-process/dist-startup/chunk-JGIWOWZD.js",
+    "beforeSha256": "709bad8a805b12ef0cda86db7cf4e5dc752df47b4b6f749e91b67512dac15d39",
+    "afterSha256": "461746358a7236fab1642475b3083b7ac0ded6fd5563f13bdf7e8546bb5c0623",
+    "replacements": [
+      {
+        "before": "var browserWindowV8CacheOptions = isProduction ? BypassHeatCheck : None;",
+        "after": "var browserWindowV8CacheOptions = isProduction ? \"code\" : None;"
+      }
+    ]
+  }
+]

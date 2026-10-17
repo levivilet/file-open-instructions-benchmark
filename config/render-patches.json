@@ -1,0 +1,16 @@
+[
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/editor-worker/dist/editorWorkerMain.js",
+    "before": "const setSelections2 = async (editorUid, selections) => {\n  const editor = getEditor$1(editorUid);\n  const newEditor = setSelections$2(editor, selections);\n  const newEditorWithDerivedState = await updateDerivedState(editor, newEditor);\n  set$a(editorUid, editor, newEditorWithDerivedState);\n};",
+    "after": "const setSelections2 = async (editorUid, selections) => {\n  await enqueue(editorUid, async () => {\n    const instance = get$8(editorUid);\n    if (!instance || instance.newState.lifecycle?.disposed) {\n      return;\n    }\n    const editor = instance.newState;\n    const { lifecycle } = editor;\n    const newEditor = setSelections$2(editor, selections);\n    const newEditorWithDerivedState = await updateDerivedState(editor, newEditor);\n    const current = get$8(editorUid);\n    if (!current || lifecycle?.disposed || current.newState.lifecycle !== lifecycle) {\n      return;\n    }\n    set$a(editorUid, current.oldState, newEditorWithDerivedState);\n  });\n};",
+    "beforeSha256": "12e3c810618d39ece2b4f9b5f0fc2c116e825b2f613ce28d1aceb72ed15b2a44",
+    "afterSha256": "4bb812f272cefbb16fec1ee6426279c8d159663f671050ff1d23061a7f05496d"
+  },
+  {
+    "path": "usr/lib/lvce/resources/app/static/cb9d398/packages/renderer-worker/dist/rendererWorkerMain.js",
+    "before": "const initialRender=await rerender(newState2);await actualInvoke(\"Editor.setSelections2\",id12,savedSelections);const selectionRender=await rerender(newState2);return{...selectionRender,commands:[...initialRender.commands,...selectionRender.commands]}",
+    "after": "await actualInvoke(\"Editor.setSelections2\",id12,savedSelections);return rerender(newState2)",
+    "beforeSha256": "6e8947c0656e736be292710ccbda90316f42f93ff50bc4ae5ac8a051aad022df",
+    "afterSha256": "f6526473c1a4038a52207045a3a3dcdee9c6f0eb51b80a69e842a7474d25efaf"
+  }
+]
