@@ -96,7 +96,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
   shipped-render-paired:
-    name: Shipped initial-render comparison
+    name: Official selection-restoration comparison
     needs: accounting
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 35

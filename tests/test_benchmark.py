@@ -771,7 +771,7 @@ class BenchmarkTest(unittest.TestCase):
             self.assertEqual(json.loads((output/'raw/paired-shipped-render.json').read_text()), data)
             self.assertEqual(published['lvceTarget']['candidateMedian'], 1_400_000_000)
             self.assertFalse(published['lvceTarget']['met'])
-            self.assertIn('Shipped initial-render comparison', (output/'index.html').read_text())
+            self.assertIn('Official selection-restoration comparison', (output/'index.html').read_text())
 
     def test_report_preserves_controlled_pairs_and_explicit_unmet_target(self):
         import compare_response

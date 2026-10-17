@@ -1,4 +1,4 @@
-"""Unmodified official-release comparison for the shipped initial-render change."""
+"""Unmodified official-release comparison for the selection-restoration lifecycle changes."""
 import json
 from pathlib import Path
 

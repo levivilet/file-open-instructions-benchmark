@@ -167,7 +167,7 @@ def build_report(results, output, run_url, commit, comparison=None, ipc_comparis
         (raw_dir / 'paired-shipped-render.json').write_text(json.dumps(shipped_comparison, indent=2) + '\n')
         summary = shipped_comparison['summary']
         low, high = summary['bootstrap95MeanSavings']
-        shipped_html = (f"<h2>Shipped initial-render comparison</h2><p>Unmodified official "
+        shipped_html = (f"<h2>Official selection-restoration comparison</h2><p>Unmodified official "
                         f"{html.escape(shipped_comparison['baseline']['version'])} to "
                         f"{html.escape(shipped_comparison['candidate']['version'])}: mean saved "
                         f"{summary['meanPairedInstructionsSaved'] / 1e6:.2f}M instructions; 95% interval "
@@ -208,6 +208,9 @@ def build_report(results, output, run_url, commit, comparison=None, ipc_comparis
                             "Patched diagnostic bundles are separate from the official release results above. "
                             "Positive savings favor the candidate; intervals spanning zero are inconclusive. "
                             "Isolated savings must not be added together or pooled across runs.</p>"
+                            "<p>The initial-render coalescing experiment reduced instructions, but official v0.123.18 "
+                            "failed combined settings, tab restoration and reopen acceptance. Coalescing was reverted "
+                            "in the corrected release and is not a shipped performance improvement.</p>"
                             "<table><thead><tr><th>Experiment</th><th>Frozen release</th><th>Mean saved</th>"
                             "<th>95% interval</th><th>Raw data</th></tr></thead><tbody>" + ''.join(experiment_rows) + '</tbody></table>')
     target, target_html = None, ''
