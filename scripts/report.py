@@ -80,8 +80,9 @@ def load_results(results_root):
     return results
 
 
-def validate_comparison(data, protocol):
-    baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+def validate_comparison(data, protocol, baseline=None):
+    if baseline is None:
+        baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
     candidate = next(editor for editor in EDITORS if editor['id'] == 'lvce')
     if (data.get('baseline') != baseline or data.get('candidate') != candidate
             or data.get('protocol') != protocol or data.get('host', {}).get('machine') != 'aarch64'):
@@ -124,7 +125,7 @@ def load_experiments(directory, run_url, commit):
     return results
 
 
-def build_report(results, output, run_url, commit, comparison=None, ipc_comparison=None, experiments=None):
+def build_report(results, output, run_url, commit, comparison=None, ipc_comparison=None, experiments=None, shipped_comparison=None):
     output.mkdir(parents=True, exist_ok=True)
     raw_dir = output / 'raw'
     raw_dir.mkdir(exist_ok=True)
@@ -161,6 +162,18 @@ def build_report(results, output, run_url, commit, comparison=None, ipc_comparis
                            f"All {len(comparison['pairs'])} alternating-order pairs are retained. "
                            "This compares complete releases and includes any intervening changes. "
                            "<a href='raw/paired-lvce.json'>Download every pair and artifact identity</a>.</p>")
+    shipped_html = ''
+    if shipped_comparison is not None:
+        (raw_dir / 'paired-shipped-render.json').write_text(json.dumps(shipped_comparison, indent=2) + '\n')
+        summary = shipped_comparison['summary']
+        low, high = summary['bootstrap95MeanSavings']
+        shipped_html = (f"<h2>Shipped initial-render comparison</h2><p>Unmodified official "
+                        f"{html.escape(shipped_comparison['baseline']['version'])} to "
+                        f"{html.escape(shipped_comparison['candidate']['version'])}: mean saved "
+                        f"{summary['meanPairedInstructionsSaved'] / 1e6:.2f}M instructions; 95% interval "
+                        f"[{low / 1e6:.2f}M, {high / 1e6:.2f}M]. All forty pairs are retained separately "
+                        "from the overall release comparison and diagnostic patches. "
+                        "<a href='raw/paired-shipped-render.json'>Download all official-release pairs</a>.</p>")
     ipc_html = ''
     if ipc_comparison is not None:
         (raw_dir / 'paired-ipc.json').write_text(json.dumps(ipc_comparison, indent=2) + '\n')
@@ -206,7 +219,7 @@ def build_report(results, output, run_url, commit, comparison=None, ipc_comparis
         status = 'met' if target['met'] else 'unmet'
         target_html = (f"<p class='note'>LVCE target: below 1,300M instructions. The {target['statistic']} is "
                        f"{measured / 1e6:.2f}M; target {status}.</p>")
-    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison, 'controlledIpcComparison': ipc_comparison, 'controlledExperiments': experiment_entries, 'lvceTarget': target}
+    report = {'complete': True, 'runUrl': run_url, 'commit': commit, 'editors': entries, 'pairedComparison': comparison, 'controlledIpcComparison': ipc_comparison, 'controlledExperiments': experiment_entries, 'lvceTarget': target, 'shippedRenderComparison': shipped_comparison}
     (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     maximum = max(entry['medianInstructions'] for entry in entries)
     chart_max = max(1, math.ceil(maximum * 1.1))
@@ -236,7 +249,7 @@ svg{{width:100%;max-width:900px;background:white}}rect{{fill:#2477ae}}text{{font
 <p>The Linux ARM64 comparison includes all required editors. All {len(entries)} completed with valid measurements.</p>
 {target_html}<svg viewBox='0 0 {chart_width} 350' role='img' aria-label='Median retired instructions to open hello.txt'>{''.join(bars)}</svg>
 <table><thead><tr><th>Editor</th><th>Version</th><th>Median instructions to open file</th><th>Trials</th><th>Raw data</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>{comparison_html}{ipc_html}{experiments_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
+<tbody>{''.join(rows)}</tbody></table>{comparison_html}{shipped_html}{ipc_html}{experiments_html}<p><a href='report.json'>Download complete report</a></p></main></body></html>"""
     (output / 'index.html').write_text(page)
 
 
@@ -247,6 +260,7 @@ def main():
     parser.add_argument('--run-url', default='')
     parser.add_argument('--commit', default='')
     parser.add_argument('--experiments', type=Path)
+    parser.add_argument('--shipped-render', type=Path)
     args = parser.parse_args()
     results = load_results(args.input)
     comparison = validate_comparison(json.loads((ROOT / 'results/paired/comparison.json').read_text()),
@@ -259,7 +273,11 @@ def main():
     if ipc_comparison['host'].get('commit') != args.commit or ipc_comparison['host'].get('runUrl') != args.run_url:
         raise ValueError('controlled IPC comparison belongs to a different workflow run')
     experiments = load_experiments(args.experiments, args.run_url, args.commit) if args.experiments else []
-    build_report(results, args.output, args.run_url, args.commit, comparison, ipc_comparison, experiments)
+    shipped = None
+    if args.shipped_render:
+        from compare_shipped_render import validate_experiment as validate_shipped
+        shipped = validate_shipped(json.loads(args.shipped_render.read_text()), args.run_url, args.commit)
+    build_report(results, args.output, args.run_url, args.commit, comparison, ipc_comparison, experiments, shipped)
     (args.output / 'ipc-analysis.html').write_text((ROOT / 'docs/ipc-analysis.html').read_text())
     print(f'Built a complete report for {len(results)} editors at {args.output}')
 

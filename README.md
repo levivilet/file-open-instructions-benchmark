@@ -83,7 +83,7 @@ therefore compares complete releases and cannot isolate savings caused by the
 ASCII shortcut. Earlier v0.122.9/v0.123.8 results are historical context.
 
 The minimal Electron entry uses the **same Electron 44.8.0 runtime bytes** as
-LVCE v0.123.17: the checksum-verified LVCE Debian package is extracted separately
+LVCE v0.123.18: the checksum-verified LVCE Debian package is extracted separately
 and only `resources/app` is replaced with the small app in `electron/`. Installation
 checks LVCE's embedded runtime version first. No npm installation or second Electron
 release is involved. The app reads the selected UTF-8 file asynchronously and displays
@@ -183,8 +183,8 @@ the experimental runtime metadata records the actual runtime. These results
 are diagnostic and never presented as an official LVCE release comparison.
 
 
-The current official comparison uses v0.123.14/v0.123.17, and the minimal
-Electron reference uses the exact v0.123.17 runtime. That release contains worker
+The current official comparison uses v0.123.14/v0.123.18, and the minimal
+Electron reference uses the exact v0.123.18 runtime. That release coalesces the initial editor render and retains worker
 bundle minification (LVCE #16032) and Electron 44.8 integration (#16036), plus
 intervening changes from other tasks. Whole-release differences cannot be
 attributed entirely to these two optimizations. The same-release worker,
@@ -205,3 +205,11 @@ diff RPC removal. Inconclusive experiments remain visible. The native and V8
 profiling jobs stay outside the uninstrumented report inputs. The mapped native
 profile retains private V8 symbol maps and native samples for explicit address
 resolution when perf's automatic symbol lookup is unavailable.
+
+
+The shipped initial-render comparison additionally retains forty pairs comparing
+unmodified official v0.123.17 with the current pinned LVCE release. It uses the
+same trial runner and counting protocol, with its own baseline directory and raw
+`paired-shipped-render.json`. The overall comparison remains against v0.123.14;
+these independent datasets are not pooled or added together. Report publication
+requires every hardware, editor and comparison prerequisite to pass.

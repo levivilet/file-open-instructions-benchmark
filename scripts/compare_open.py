@@ -27,7 +27,7 @@ def summarize(pairs):
     }
 
 
-def main():
+def main(*, baseline_path=None, destination=None, baseline_directory='lvce-baseline'):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--editor', choices=['lvce'], required=True)
     parser.add_argument('--perf', required=True)
@@ -35,11 +35,11 @@ def main():
     args = parser.parse_args()
     if args.repeats < 3 or platform.machine() != 'aarch64':
         parser.error('requires at least three pairs on ARM64')
-    baseline = json.loads((ROOT / 'config/lvce-baseline.json').read_text())
+    baseline = json.loads((baseline_path or ROOT / 'config/lvce-baseline.json').read_text())
     candidate = next(e for e in json.loads(install.LOCK.read_text()) if e['id'] == 'lvce')
     archive = ROOT / '.tmp/apps' / baseline['archive']
     install.download(baseline, archive)
-    directory = ROOT / '.tmp/apps/lvce-baseline'
+    directory = ROOT / '.tmp/apps' / baseline_directory
     install.extract(baseline, archive, directory)
     baseline_trial = dict(baseline, binary=str(directory / baseline['binary']))
     output = {
@@ -51,7 +51,7 @@ def main():
         'design': 'fresh profile each trial; alternate baseline/candidate order per pair; unchanged open protocol; no sampling',
         'pairs': [],
     }
-    destination = Path('results/comparison.json')
+    destination = destination or Path('results/comparison.json')
     destination.parent.mkdir(exist_ok=True)
     for index in range(args.repeats):
         order = ['baseline', 'candidate'] if index % 2 == 0 else ['candidate', 'baseline']
