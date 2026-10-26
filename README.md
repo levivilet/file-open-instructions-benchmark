@@ -1,7 +1,7 @@
 # File-open instructions benchmark
 
 This project compares retired CPU instructions used to open a small text file in
-LVCE Editor, Visual Studio Code, Geany, minimal Electron and Zed on Linux ARM64. The latest complete report is
+LVCE Editor, Visual Studio Code, Geany, minimal Electron, Zed, CodeMirror 5 and CodeMirror 6 on Linux ARM64. The latest complete report is
 published on [GitHub Pages](https://levivilet.github.io/file-open-instructions-benchmark/).
 
 Each result opens a temporary `hello.txt` whose bytes are exactly `hello world`.
@@ -133,7 +133,7 @@ every IPC trial, its run/commit identity and summary, publishes all raw data at
 `raw/paired-ipc.json`, and links the diagnostic process/worker message analysis.
 The controlled patched bundle is diagnostic; the historical .13/.14 comparison
 validated that shipped change. Report generation/deployment require both paired
-comparisons and the entire five-editor matrix. No samples or failed trials are
+comparisons and the entire seven-editor matrix. No samples or failed trials are
 silently discarded.
 
 The separate **Controlled preference comparison** job tests microtask coalescing
@@ -218,3 +218,15 @@ The controlled initial-render coalescing result remains a frozen diagnostic.
 Although it reduced instructions, official v0.123.18 failed the combined settings,
 tab restoration and reopen acceptance sequence. Coalescing was reverted; it is
 not a shipped performance improvement in the corrected candidate.
+
+CodeMirror 5 (5.65.21) and CodeMirror 6 (`@codemirror/view` 6.43.14,
+`@codemirror/state` 6.7.6) run as small plaintext Electron applications using
+the same checksum-verified LVCE runtime as minimal Electron. CodeMirror 6 also
+includes standard editing key bindings (`@codemirror/commands` 6.11.1).
+Their npm lockfiles pin the complete dependency trees and esbuild 0.28.2;
+installation and bundling happen before launch and counting. The apps start
+empty and use Ctrl+O with the native chooser, the same asynchronous UTF-8 read,
+path pacing and one-second response window as minimal Electron. After cutoff,
+the displayed document must identify the exact fixture path and select-all/copy
+must return exactly `hello world`. Both entries are required by the report and
+deployment gates; their raw counters are published alongside the other editors.

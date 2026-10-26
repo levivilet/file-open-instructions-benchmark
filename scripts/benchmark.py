@@ -23,7 +23,7 @@ RESPONSE_WINDOW_SECONDS = 1.0
 PROTOCOL = {
     'version': 5,
     'metric': 'retired hardware instructions (user and kernel)',
-    'action': 'open the prepared hello.txt fixture; VS Code, Geany, Zed and minimal Electron use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
+    'action': 'open the prepared hello.txt fixture; VS Code, Geany, Zed, minimal Electron and CodeMirror 5/6 use Ctrl+O and LVCE uses File > Open File; all enter its absolute path with Ctrl+L',
     'boundary': 'acknowledged perf enable before the open command through acknowledged disable 1.0 seconds after clicking the chooser Open button',
     'responseWindowSeconds': RESPONSE_WINDOW_SECONDS,
     'inputPacing': '100ms for the location entry to realize after Ctrl+L, 10ms per path character, then a fixed 250ms chooser path-resolution pause before submit; editor work during pacing is included',
@@ -33,7 +33,7 @@ PROTOCOL = {
     'cache': 'warm OS filesystem caches permitted; application profiles always fresh',
     'launcher': 'editor cgroup contains editor process tree; controller, X server, desktop and Zed file-chooser portal stay outside',
     'cutoff': 'perf disable acknowledgement after fixed response window; control latency through acknowledgement is included',
-    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab, Zed Copy Path and minimal Electron textarea must identify the exact fixture path, and select-all/copy must return exactly hello world',
+    'verification': 'after cutoff, VS Code and Geany window titles must name hello.txt, LVCE selected tab, Zed Copy Path and minimal Electron textarea and CodeMirror editor must identify the exact fixture path, and select-all/copy must return exactly hello world',
     'repeats': 3,
 }
 
@@ -48,7 +48,7 @@ def command_for(editor, home, debug_port):
     args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
             '--user-data-dir', str(home / 'profile'), '--disable-extensions',
             '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust']
-    if editor['id'] in {'lvce', 'electron'}:
+    if editor['id'] in {'lvce', 'electron', 'codemirror5', 'codemirror6'}:
         args = ['--no-sandbox', '--disable-gpu', '--ozone-platform=x11',
                 '--user-data-dir=' + str(home / 'profile'), f'--remote-debugging-port={debug_port}']
     return [binary, *args]
@@ -267,12 +267,14 @@ def trial(editor, perf):
                     details['stage'] = 'verify-document'
                     title = window_title(window_id)
                     document_path = None
-                    if editor['id'] in {'lvce', 'electron'}:
+                    if editor['id'] in {'lvce', 'electron', 'codemirror5', 'codemirror6'}:
                         page = Page(debug_port, timeout=5)
                         try:
                             expression = ("document.querySelector('.MainTabSelected')?.getAttribute('title')"
                                           if editor['id'] == 'lvce' else
-                                          "document.querySelector('textarea')?.dataset.path")
+                                          "document.querySelector('textarea')?.dataset.path"
+                                          if editor['id'] == 'electron' else
+                                          "document.querySelector('#editor')?.dataset.path")
                             tab_path = page.evaluate(expression)
                         finally:
                             page.close()

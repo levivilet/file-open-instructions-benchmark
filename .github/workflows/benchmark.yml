@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        editor: [lvce, vscode, geany, electron, zed]
+        editor: [lvce, vscode, geany, electron, zed, codemirror5, codemirror6]
     steps:
       - uses: actions/checkout@v5
       - name: Install desktop, clipboard and perf

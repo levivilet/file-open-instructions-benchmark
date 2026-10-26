@@ -1,0 +1,17 @@
+{
+  "name": "file-open-instructions-benchmark-codemirror-electron",
+  "private": true,
+  "version": "1.0.0",
+  "main": "main.cjs",
+  "scripts": {
+    "build": "esbuild renderer.js --bundle --format=iife --outfile=renderer.bundle.js"
+  },
+  "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.14"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
