@@ -50,13 +50,17 @@ def extract(entry, archive, destination):
     if not binary.exists():
         raise FileNotFoundError(f"Binary not found after extracting {entry['id']}: {binary}")
     binary.chmod(binary.stat().st_mode | 0o111)
-    if entry.get("minimalApp"):
+    if entry.get("minimalApp") or entry.get("app"):
         app = binary.parent / "resources/app"
         config = json.loads((app / "config.json").read_text())
-        if config["electronVersion"] != entry["version"].split()[0]:
+        if config["electronVersion"] != entry.get("runtimeVersion", entry["version"].split()[0]):
             raise ValueError("minimal app Electron version differs from pinned LVCE runtime")
         shutil.rmtree(app)
-        shutil.copytree(ROOT / "electron", app)
+        source = ROOT / entry.get("app", "electron")
+        if entry.get("app"):
+            subprocess.run(["nice", "npm", "ci"], cwd=source, check=True)
+            subprocess.run(["nice", "npm", "run", "build"], cwd=source, check=True)
+        shutil.copytree(source, app, ignore=shutil.ignore_patterns("node_modules"))
 
 
 def main():

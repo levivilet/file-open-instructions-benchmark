@@ -86,21 +86,42 @@ class BenchmarkTest(unittest.TestCase):
         self.assertIn('--user-data-dir=/tmp/private-home/profile', command)
         self.assertNotIn('hello.txt', ' '.join(command))
 
-    def test_minimal_electron_rejects_mismatched_runtime_before_replacement(self):
-        electron = next(e for e in report.EDITORS if e['id'] == 'electron')
-        with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory) / 'app'
-            def extract(*args, **kwargs):
-                binary = target / electron['binary']
-                binary.parent.mkdir(parents=True)
-                binary.touch()
-                config = binary.parent / 'resources/app/config.json'
-                config.parent.mkdir(parents=True)
-                config.write_text('{"electronVersion":"wrong"}')
-            with patch.object(install.subprocess, 'run', side_effect=extract):
-                with self.assertRaisesRegex(ValueError, 'version differs'):
-                    install.extract(electron, Path('runtime.deb'), target)
-            self.assertTrue((target / electron['binary']).parent.joinpath('resources/app/config.json').exists())
+    def test_codemirror_entries_use_runtime_and_complete_matrix(self):
+        runtime = next(e for e in report.EDITORS if e['id'] == 'electron')
+        workflow = (ROOT / '.github/workflows/benchmark.yml').read_text()
+        for editor_id, dependency, version in [('codemirror5', 'codemirror', '5.65.21'),
+                                                ('codemirror6', '@codemirror/view', '6.43.14')]:
+            editor = next(e for e in report.EDITORS if e['id'] == editor_id)
+            for key in ['url', 'sha256', 'archive', 'binary']:
+                self.assertEqual(editor[key], runtime[key])
+            app = ROOT / editor['app']
+            manifest = json.loads((app / 'package.json').read_text())
+            lock = json.loads((app / 'package-lock.json').read_text())
+            self.assertEqual(manifest['dependencies'][dependency], version)
+            self.assertEqual(lock['packages']['node_modules/' + dependency]['version'], version)
+            self.assertIn(editor_id, workflow.split('editor: [')[1].split(']')[0])
+            command = command_for(editor, Path('/tmp/private-home'), 1234)
+            self.assertIn('--remote-debugging-port=1234', command)
+            self.assertIn('--user-data-dir=/tmp/private-home/profile', command)
+            self.assertNotIn('hello.txt', ' '.join(command))
+
+    def test_replacement_apps_reject_mismatched_runtime_before_replacement(self):
+        for editor in report.EDITORS:
+            if not editor.get('minimalApp') and not editor.get('app'):
+                continue
+            with self.subTest(editor=editor['id']), tempfile.TemporaryDirectory() as directory:
+                target = Path(directory) / 'app'
+                def extract(*args, **kwargs):
+                    binary = target / editor['binary']
+                    binary.parent.mkdir(parents=True)
+                    binary.touch()
+                    config = binary.parent / 'resources/app/config.json'
+                    config.parent.mkdir(parents=True)
+                    config.write_text('{"electronVersion":"wrong"}')
+                with patch.object(install.subprocess, 'run', side_effect=extract):
+                    with self.assertRaisesRegex(ValueError, 'version differs'):
+                        install.extract(editor, Path('runtime.deb'), target)
+                self.assertTrue((target / editor['binary']).parent.joinpath('resources/app/config.json').exists())
 
     def test_controlled_icon_experiment_rejects_bundle_drift(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -630,7 +651,7 @@ class BenchmarkTest(unittest.TestCase):
             report.validate_result(data, editor['id'])
             invalid = [{'documentLoaded': False}, {'documentContent': ''}, {'cutoffAcknowledged': False},
                        {'focusPid': 999}, {'instructions': 0}, {'valid': False}]
-            if editor['id'] in {'lvce', 'electron', 'zed'}:
+            if editor['id'] in {'lvce', 'electron', 'zed', 'codemirror5', 'codemirror6'}:
                 invalid.append({'documentPath': '/tmp/other/hello.txt'})
             for changes in invalid:
                 broken = copy.deepcopy(data)
@@ -643,7 +664,7 @@ class BenchmarkTest(unittest.TestCase):
     def test_identity_verification_is_specific_to_editor(self):
         for editor in report.EDITORS:
             data = result(editor)
-            if editor['id'] in {'lvce', 'electron', 'zed'}:
+            if editor['id'] in {'lvce', 'electron', 'zed', 'codemirror5', 'codemirror6'}:
                 data['trials'][0]['windowTitle'] = 'Lvce Editor'
                 report.validate_result(data, editor['id'])
                 data['trials'][0]['documentPath'] = '/tmp/wrong/hello.txt'
