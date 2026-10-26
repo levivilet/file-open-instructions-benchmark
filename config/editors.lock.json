@@ -2,10 +2,10 @@
   {
     "id": "lvce",
     "name": "LVCE Editor",
-    "version": "v0.123.19",
-    "archive": "lvce-v0.123.19_arm64.deb",
-    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.123.19/lvce-v0.123.19_arm64.deb",
-    "sha256": "d04ecd2e72c98bcc187a6f02926ff7797d90848a36524af8f3c1b9f73656927c",
+    "version": "v0.125.20",
+    "archive": "lvce-v0.125.20_arm64.deb",
+    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.125.20/lvce-v0.125.20_arm64.deb",
+    "sha256": "dd318b66b09f01f11043c32984276fe5abfc99ceeda3788e635154b8e1742a19",
     "binary": "usr/lib/lvce/lvce"
   },
   {
@@ -27,10 +27,10 @@
   {
     "id": "electron",
     "name": "Minimal Electron",
-    "version": "44.8.0 (LVCE v0.123.19 runtime)",
-    "archive": "lvce-v0.123.19_arm64.deb",
-    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.123.19/lvce-v0.123.19_arm64.deb",
-    "sha256": "d04ecd2e72c98bcc187a6f02926ff7797d90848a36524af8f3c1b9f73656927c",
+    "version": "44.9.2 (LVCE v0.125.20 runtime)",
+    "archive": "lvce-v0.125.20_arm64.deb",
+    "url": "https://github.com/lvce-editor/lvce-editor/releases/download/v0.125.20/lvce-v0.125.20_arm64.deb",
+    "sha256": "dd318b66b09f01f11043c32984276fe5abfc99ceeda3788e635154b8e1742a19",
     "binary": "usr/lib/lvce/lvce",
     "minimalApp": true
   },
